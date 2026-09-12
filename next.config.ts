@@ -2,8 +2,7 @@ import type { NextConfig } from 'next';
 import path from 'node:path';
 
 const nextConfig: NextConfig = {
-  // Das CRM liegt als Unterordner im zeit-app-Repo; ohne diese Angabe
-  // waehlt Turbopack das Elternverzeichnis als Workspace-Root.
+  // Workspace-Root explizit setzen, damit Turbopack keinen Elternordner waehlt.
   turbopack: { root: path.resolve(__dirname) },
   // Schlankes, eigenstaendiges Build fuer den Docker-Container
   output: 'standalone',

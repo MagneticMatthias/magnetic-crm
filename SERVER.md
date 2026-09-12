@@ -19,8 +19,8 @@ Zeigt `/etc/caddy/Caddyfile` → Abschnitt C.
 
 ```bash
 cd /opt          # oder wo deine anderen Apps liegen
-git clone -b claude/salessuite-analysis-rebuild-lugf8p https://github.com/MagneticMatthias/zeit-app.git magnetic-crm
-cd magnetic-crm/crm
+git clone https://github.com/MagneticMatthias/magnetic-crm.git
+cd magnetic-crm
 cp .env.example .env
 nano .env        # NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY eintragen, SMTP optional
 ./deploy.sh
@@ -102,13 +102,13 @@ Beim Domain-Anbieter einen A-Record `crm` → Server-IP anlegen (bei IPv6 zusät
 ## Updates einspielen
 
 ```bash
-cd /opt/magnetic-crm/crm && ./deploy.sh
+cd /opt/magnetic-crm && ./deploy.sh
 ```
 
 ## Ohne Docker (Node + PM2)
 
 ```bash
-cd /opt/magnetic-crm/crm
+cd /opt/magnetic-crm
 cp .env.example .env.local && nano .env.local
 npm ci && npm run build
 pm2 start npm --name magnetic-crm -- start -- -p 3010

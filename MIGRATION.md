@@ -19,7 +19,7 @@ und die Kontaktliste aus PocketBase und legt sie im CRM an.
 Bereits vorhandene Firmen (gleicher Name) werden übersprungen – das Skript
 kann also mehrfach laufen.
 
-## Ausführen (auf dem Mac, im Ordner `crm/`)
+## Ausführen (auf dem Mac, im Repo-Ordner)
 
 1. **Service-Role-Key** holen: Supabase → Project Settings → API Keys → `service_role`
    (umgeht RLS – nur lokal verwenden, nie ins Repo, nie in die App).

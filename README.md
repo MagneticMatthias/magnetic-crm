@@ -72,8 +72,8 @@ automatischen Backups. Beides deckt das Repo mit zwei GitHub-Actions ab:
 
 | Workflow | Was er tut | Secrets |
 |---|---|---|
-| `crm-keepalive.yml` | alle 2 Tage eine Mini-Abfrage → Projekt pausiert nie | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
-| `crm-backup.yml` | täglich `pg_dump`, 30 Tage als Artefakt, optional per SCP auf deinen Server | `SUPABASE_DB_URL` (Session-Pooler-URL), optional `BACKUP_SSH_*` |
+| `keepalive.yml` | alle 2 Tage eine Mini-Abfrage → Projekt pausiert nie | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+| `backup.yml` | täglich `pg_dump`, 30 Tage als Artefakt, optional per SCP auf deinen Server | `SUPABASE_DB_URL` (Session-Pooler-URL), optional `BACKUP_SSH_*` |
 
 Secrets anlegen unter *GitHub → Settings → Secrets and variables → Actions*.
 Beide Workflows lassen sich über „Run workflow" sofort testen.

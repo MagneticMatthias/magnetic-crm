@@ -1,0 +1,62 @@
+name: CRM – Tägliches Datenbank-Backup
+
+# Ersatz fuer die automatischen Backups des Pro-Plans:
+# pg_dump der kompletten Datenbank, komprimiert, 30 Tage als Artefakt
+# aufbewahrt. Optional zusaetzlich per SCP auf einen eigenen Server.
+on:
+  schedule:
+    - cron: '43 2 * * *'     # taeglich 02:43 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump erstellen
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Secret SUPABASE_DB_URL fehlt (Session-Pooler-URL aus Project Settings -> Database)."; exit 1
+          fi
+          STAMP=$(date -u +%Y-%m-%d_%H%M)
+          FILE="crm-backup-${STAMP}.sql.gz"
+          # pg_dump 17 aus dem offiziellen Image - passt zu jeder Supabase-Postgres-Version
+          docker run --rm -e PGURL="$SUPABASE_DB_URL" postgres:17 \
+            sh -c 'pg_dump "$PGURL" --no-owner --no-privileges --schema=public --schema=auth' \
+            | gzip -9 > "$FILE"
+          SIZE=$(du -h "$FILE" | cut -f1)
+          echo "Backup: $FILE ($SIZE)"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+          # Sanity-Check: ein leeres Dump ist ein Fehler, kein Erfolg
+          [ "$(stat -c%s "$FILE")" -gt 1024 ] || { echo "::error::Dump verdaechtig klein"; exit 1; }
+
+      - name: Als Artefakt sichern (30 Tage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 30
+          compression-level: 0
+
+      # Optional: zusaetzlich auf den eigenen Server kopieren.
+      # Dafuer die Secrets BACKUP_SSH_HOST, BACKUP_SSH_USER, BACKUP_SSH_KEY
+      # und BACKUP_SSH_PATH anlegen - fehlen sie, wird der Schritt uebersprungen.
+      - name: Auf eigenen Server kopieren (optional)
+        if: ${{ env.BACKUP_SSH_HOST != '' }}
+        env:
+          BACKUP_SSH_HOST: ${{ secrets.BACKUP_SSH_HOST }}
+          BACKUP_SSH_USER: ${{ secrets.BACKUP_SSH_USER }}
+          BACKUP_SSH_KEY: ${{ secrets.BACKUP_SSH_KEY }}
+          BACKUP_SSH_PATH: ${{ secrets.BACKUP_SSH_PATH }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$BACKUP_SSH_KEY" > ~/.ssh/id_backup
+          chmod 600 ~/.ssh/id_backup
+          ssh-keyscan -H "$BACKUP_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          scp -i ~/.ssh/id_backup "$FILE" "$BACKUP_SSH_USER@$BACKUP_SSH_HOST:$BACKUP_SSH_PATH/"
+          # Auf dem Server nur die letzten 30 Dumps behalten
+          ssh -i ~/.ssh/id_backup "$BACKUP_SSH_USER@$BACKUP_SSH_HOST" \
+            "cd '$BACKUP_SSH_PATH' && ls -t crm-backup-*.sql.gz | tail -n +31 | xargs -r rm --"
