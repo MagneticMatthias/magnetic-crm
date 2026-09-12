@@ -132,6 +132,7 @@ async function ensurePipelines(orgId) {
   let pos = existing.length;
   for (const [key, def] of Object.entries(PIPELINES)) {
     let p = existing.find((x) => norm(x.name) === norm(def.name));
+    if (!p && DRY) p = { id: `dry-${key}`, name: def.name };
     if (!p && !DRY) {
       p = (await must(sb.from('pipelines').insert({ org_id: orgId, name: def.name, kind: def.kind, position: pos++ }).select('id, name').single(), 'pipeline insert'));
       console.log(`+ Pipeline "${def.name}" angelegt`);
@@ -141,6 +142,7 @@ async function ensurePipelines(orgId) {
       const have = stagesAll.filter((s) => s.pipeline_id === p.id);
       for (const [i, [name, prob, color, flag]] of def.stages.entries()) {
         let s = have.find((x) => norm(x.name) === norm(name));
+        if (!s && DRY) s = { id: `dry-${key}-${i}`, name };
         if (!s && !DRY) {
           s = await must(sb.from('pipeline_stages').insert({
             pipeline_id: p.id, name, position: i, probability: prob, color,
