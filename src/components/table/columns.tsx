@@ -15,11 +15,14 @@ export type ColumnDef<T> = {
 const Muted = ({ children }: { children: ReactNode }) =>
   children ? <>{children}</> : <span className="text-muted">–</span>;
 
-const PersonChip = ({ count }: { count: number }) => (
-  <span className="chip bg-surface-2 text-muted">
-    <Users size={12} /> {count} {count === 1 ? 'Person' : 'Personen'}
-  </span>
-);
+const PersonChip = ({ count }: { count: number }) =>
+  count === 0 ? (
+    <span className="text-muted">Kein Ansprechpartner</span>
+  ) : (
+    <span className="chip bg-surface-2 text-muted">
+      <Users size={12} /> {count} Ansprechpartner
+    </span>
+  );
 
 const Tel = ({ value }: { value: string | null | undefined }) =>
   value ? <a href={`tel:${value}`} className="text-brand hover:underline"

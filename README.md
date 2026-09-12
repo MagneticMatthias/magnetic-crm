@@ -17,12 +17,13 @@ Datenmodell, eigene Oberfläche, eigene Texte.
 | **Detail-Panel** | Slide-over mit Tabs Kontakt-Info, Aktivitäten und Notizen (Rich-Text, anheften). Karten: Ansprechpartner (kompakte Zeilen, primärer Ansprechpartner, aufklappbare Bearbeitung), Deal-Name, Deal-Status, Stammdaten, Deal-Eigenschaften, Marketing-Informationen (UTM), Setter-Informationen, verknüpfter Kontakt, Aufgaben – Felder speichern beim Verlassen |
 | **Deal-Ansicht** | Konfigurator je Nutzer: Karten per Drag & Drop sortieren, ein- und ausblenden |
 | **Deals** | Wert, Phase, Setter, Closer, Leadquelle, erwarteter Abschluss, nächster Schritt, Phasen-Historie |
+| **Call-Flow Tracking** | Karte im Panel: Anruf-Typ, „Wer hat abgenommen?" (Gatekeeper / Entscheider), Datum, Uhrzeit mit „Jetzt", mitlaufender Timer, Rich-Text-Notizen, Ergebnis schiebt den Deal weiter |
 | **Lead Management** | Strukturiertes Call-Logging (Opening / Setting / Closing / Follow-up) mit Ergebnis, Dauer, Notiz – kein Freitext-Chaos |
 | **Power Dialer** | Arbeitet eine Phase Deal für Deal ab: anrufen, Timer, Ergebnis per Klick, Deal automatisch weiterschieben, Wiedervorlage anlegen, automatisch zum nächsten |
 | **Schlagzahl-Tracking** | Tages- und Wochenziele je Mitarbeiter, Zielerreichung, 14-Tage-Verlauf, Team-Tabelle |
-| **E-Mail** | Versand direkt aus Kontakt und Deal über SMTP (Gmail, Microsoft 365, eigener Server), Vorlagen mit Platzhaltern, jede Mail landet im Verlauf |
-| **Lead-Formulare** | Öffentliche Formularseiten unter `/f/<slug>`; ein Absenden legt Kontakt + Deal in der gewählten Phase an |
-| **Echtzeit-Zusammenarbeit** | Supabase Realtime: Änderungen an Deals, Calls, Aufgaben und Kontakten erscheinen sofort bei allen; Presence zeigt, wer online ist |
+| **E-Mail** | „E-Mail verfassen" mit Absenderwahl, Empfänger-Chips, Cc/Bcc, Vorlagen mit Platzhaltern; Versand über SMTP (Gmail, Microsoft 365, eigener Server), jede Mail landet im Verlauf |
+| **Lead-Formulare** | Öffentliche Formularseiten unter `/f/<slug>` („Lass uns in Kontakt treten!", Vorwahl-Auswahl, konfigurierbare Felder); ein Absenden legt Kontakt + Deal in der gewählten Phase an und übernimmt UTM-Parameter |
+| **Echtzeit-Zusammenarbeit** | Supabase Realtime: Änderungen erscheinen sofort bei allen; Presence zeigt, wer online ist und welche Zeile ein Kollege gerade offen hat (farbige Markierung mit Avatar) |
 | **Aufgaben** | Fristen, Prioritäten, Zuweisung, Überfällig-Warnung, eigene und Team-Sicht |
 | **Sales-Controlling** | Funnel je Pipeline, Umsatz je Monat, Umsatz nach Leadquelle (Kanal-ROI), Call-Quoten je Gesprächstyp, Team-Leaderboard |
 | **Rechte** | Rollen Administrator / Manager / Closer / Setter, Mandantentrennung über RLS |
@@ -35,6 +36,7 @@ Datenmodell, eigene Oberfläche, eigene Texte.
    - `supabase/02_features.sql`
    - `supabase/03_ui_rework.sql`
    - `supabase/04_deal_panel.sql`
+   - `supabase/05_callflow_forms.sql`
 3. `.env.example` nach `.env.local` kopieren und die Supabase-Werte eintragen.
 4. Installieren und starten:
 
@@ -85,6 +87,7 @@ supabase/
   02_features.sql     Dialer, E-Mail, Formulare, Ziele, Realtime
   03_ui_rework.sql    Ansprechpartner, Notizen, gespeicherte Filter
   04_deal_panel.sql   UTM-Felder, Lead-Formular mit UTM, Panel-Karten
+  05_callflow_forms.sql  Wer hat abgenommen, Formularfelder
 ```
 
 **Sicherheit:** Jede Tabelle hat Row Level Security auf `org_id`. Anonyme Besucher

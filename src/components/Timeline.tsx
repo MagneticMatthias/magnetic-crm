@@ -39,6 +39,7 @@ export default function Timeline({ activities }: { activities: Row[] }) {
                 </span>
                 {a.outcome && <Badge tone={tone as 'win' | 'lose' | 'muted'}>{CALL_OUTCOME_LABEL[a.outcome]}</Badge>}
                 {a.duration_seconds ? <span className="text-xs text-muted">{duration(a.duration_seconds)}</span> : null}
+                {a.answered_by && <Badge>{a.answered_by === 'gatekeeper' ? 'Gatekeeper' : 'Entscheider'}</Badge>}
                 <span className="ml-auto text-xs text-muted">{dateTime(a.occurred_at)}</span>
               </div>
               {a.subject && <p className="mt-1 text-sm">{a.subject}</p>}

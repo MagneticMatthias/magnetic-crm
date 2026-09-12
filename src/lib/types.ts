@@ -158,6 +158,7 @@ export type Activity = {
   call_kind: CallKind | null;
   outcome: CallOutcome | null;
   duration_seconds: number | null;
+  answered_by?: 'gatekeeper' | 'entscheider' | null;
   phone_number: string | null;
   subject: string | null;
   body: string | null;
@@ -192,6 +193,9 @@ export type LeadForm = {
   success_message: string | null;
   ask_company: boolean;
   ask_message: boolean;
+  ask_email?: boolean;
+  ask_phone?: boolean;
+  ask_last_name?: boolean;
   deal_value: number;
   active: boolean;
 };

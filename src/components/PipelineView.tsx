@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui';
 import DealForm from '@/components/DealForm';
 import { DEAL_FIELDS } from '@/lib/filters';
 import { saveFilter } from '@/app/actions/records';
+import { useViewing } from '@/lib/presence';
 import { createDeal } from '@/app/actions/crm';
 import type {
   ContactWithPersons, DealWithContact, FilterDefinition, Pipeline, Profile, SavedFilter, Stage,
@@ -36,6 +37,7 @@ export default function PipelineView({
   const [creating, setCreating] = useState(false);
   const [configuring, setConfiguring] = useState(false);
   const initialContact = initialOpen ?? null;
+  useViewing(open?.dealId ?? null);
 
   const tabHref = (id: string | null) => `/pipelines?p=${pipeline.id}${id ? `&s=${id}` : ''}`;
 

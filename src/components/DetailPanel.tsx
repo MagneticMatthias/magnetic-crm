@@ -13,13 +13,14 @@ import {
 import { PANEL_CARDS, DEFAULT_PANEL_LAYOUT, SETTER_FIELDS, type PanelCardKey } from '@/lib/panel-cards';
 import { Badge } from '@/components/Badge';
 import { logActivity, createTask } from '@/app/actions/crm';
-import { sendDealEmail, fillTemplate } from '@/app/actions/email';
+import { sendDealEmail, fillTemplate, senderOptions } from '@/app/actions/email';
 import EmailComposer from '@/components/EmailComposer';
 import ActivityComposer from '@/components/ActivityComposer';
 import Timeline from '@/components/Timeline';
 import TaskList from '@/components/TaskList';
 import TaskComposer from '@/components/TaskComposer';
 import NoteEditor from '@/components/NoteEditor';
+import CallFlowCard from '@/components/CallFlowCard';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
 import { dateTime, dateOnly, eur, initials, personName, primaryPerson } from '@/lib/format';
@@ -270,6 +271,7 @@ export default function DetailPanel({
   const [data, setData] = useState<ContactDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState(false);
+  const [callFlow, setCallFlow] = useState<null | { autoStart: boolean }>(null);
   const [, startTransition] = useTransition();
 
   const reload = useCallback(async () => {
@@ -320,12 +322,14 @@ export default function DetailPanel({
           <div className="flex items-center overflow-hidden rounded-lg">
             <a
               href={primary?.phone ? `tel:${primary.phone}` : undefined}
+              onClick={() => { setTab('info'); setCallFlow({ autoStart: true }); }}
               className={`btn-primary rounded-r-none ${primary?.phone ? '' : 'pointer-events-none opacity-50'}`}
             >
               <Phone size={15} /> Anrufen
             </a>
             <button type="button" className="btn-primary rounded-l-none border-l border-white/25 !px-2.5"
-                    onClick={() => setTab('activities')} aria-label="Anruf protokollieren">
+                    onClick={() => { setTab('info'); setCallFlow((c) => (c ? null : { autoStart: false })); }}
+                    aria-label="Call-Flow öffnen">
               <Settings2 size={15} />
             </button>
           </div>
@@ -333,6 +337,7 @@ export default function DetailPanel({
           <EmailComposer
             sendAction={async (fd) => { await sendDealEmail(fd); await reload(); }}
             fillAction={fillTemplate}
+            senderAction={senderOptions}
             contact={primary ? {
               id: contactId, email: primary.email, first_name: primary.first_name,
               last_name: primary.last_name, company: contact?.company,
@@ -402,6 +407,18 @@ export default function DetailPanel({
             <p className="py-10 text-center text-sm text-muted">Laden …</p>
           ) : tab === 'info' ? (
             <>
+              {callFlow && (
+                <CallFlowCard
+                  name={personName(primary) || title}
+                  phone={primary?.phone}
+                  contactId={contactId}
+                  dealId={mainDeal?.id}
+                  stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
+                  autoStart={callFlow.autoStart}
+                  onSave={async (fd) => { await logActivity(fd); await reload(); }}
+                  onClose={() => setCallFlow(null)}
+                />
+              )}
               {layout.map((key) => {
                 const def = PANEL_CARDS.find((c) => c.key === key);
                 if (!def) return null;

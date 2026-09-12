@@ -118,11 +118,18 @@ export async function logActivity(formData: FormData) {
     type,
     call_kind: type === 'call' ? str(formData, 'call_kind') : null,
     outcome: type === 'call' ? str(formData, 'outcome') : null,
-    duration_seconds: type === 'call' && minutes > 0 ? Math.round(minutes * 60) : null,
+    duration_seconds: type === 'call'
+      ? (Number(str(formData, 'duration_seconds') ?? 0) || (minutes > 0 ? Math.round(minutes * 60) : null))
+      : null,
+    answered_by: type === 'call' ? str(formData, 'answered_by') : null,
     phone_number: str(formData, 'phone_number'),
     subject: str(formData, 'subject'),
     body: str(formData, 'body'),
-    occurred_at: str(formData, 'occurred_at') ?? new Date().toISOString(),
+    occurred_at: (() => {
+      const d = str(formData, 'date'); const t = str(formData, 'time');
+      if (d) return new Date(`${d}T${t ?? '12:00'}`).toISOString();
+      return str(formData, 'occurred_at') ?? new Date().toISOString();
+    })(),
   });
   if (error) throw new Error(error.message);
 

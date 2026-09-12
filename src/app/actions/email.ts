@@ -18,7 +18,9 @@ export async function sendDealEmail(formData: FormData) {
   const { data: settings } = await supabase
     .from('email_settings').select('*').eq('org_id', orgId).maybeSingle();
 
-  const fromEmail = settings?.from_email || process.env.SMTP_USER;
+  const chosen = str(formData, 'from');
+  const allowed = [settings?.from_email, process.env.SMTP_USER, profile.email].filter(Boolean) as string[];
+  const fromEmail = chosen && allowed.includes(chosen) ? chosen : (settings?.from_email || process.env.SMTP_USER);
   if (!fromEmail) throw new Error('Kein Absender hinterlegt – bitte in den Einstellungen setzen.');
 
   const fromName = settings?.from_name || profile.full_name || 'Vertrieb';
@@ -34,6 +36,8 @@ export async function sendDealEmail(formData: FormData) {
     subject,
     text,
     replyTo: profile.email ?? undefined,
+    cc: str(formData, 'cc') ?? undefined,
+    bcc: str(formData, 'bcc') ?? undefined,
   });
 
   await supabase.from('activities').insert({
@@ -43,7 +47,7 @@ export async function sendDealEmail(formData: FormData) {
     user_id: profile.id,
     type: 'email',
     subject,
-    body: `An ${to}\n\n${body}`,
+    body: `An ${to}${str(formData, 'cc') ? `\nCc ${str(formData, 'cc')}` : ''}\n\n${body}`,
   });
 
   if (dealId) revalidatePath(`/deals/${dealId}`);
@@ -78,6 +82,13 @@ export async function deleteEmailTemplate(formData: FormData) {
   const { supabase } = await ctx();
   await supabase.from('email_templates').delete().eq('id', String(formData.get('id')));
   revalidatePath('/einstellungen');
+}
+
+/** Moegliche Absenderadressen fuer den Composer. */
+export async function senderOptions(): Promise<string[]> {
+  const { supabase, orgId, profile } = await ctx();
+  const { data } = await supabase.from('email_settings').select('from_email').eq('org_id', orgId).maybeSingle();
+  return [...new Set([data?.from_email, process.env.SMTP_USER, profile.email].filter(Boolean) as string[])];
 }
 
 /** Vorlage mit Kontaktdaten fuellen - fuer die Vorschau im Composer. */

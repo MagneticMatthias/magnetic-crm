@@ -18,6 +18,8 @@ export async function sendMail(options: {
   subject: string;
   text: string;
   replyTo?: string;
+  cc?: string;
+  bcc?: string;
 }) {
   if (!smtpConfigured()) {
     throw new Error(
@@ -39,6 +41,8 @@ export async function sendMail(options: {
     subject: options.subject,
     text: options.text,
     replyTo: options.replyTo,
+    cc: options.cc || undefined,
+    bcc: options.bcc || undefined,
   });
 }
 

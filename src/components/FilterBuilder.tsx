@@ -268,7 +268,7 @@ export default function FilterBuilder({
         onClick={() => setDef((d) => ({ groups: [...d.groups, []] }))}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-line py-2.5 text-[13px] text-muted transition hover:border-brand hover:text-brand"
       >
-        <CopyPlus size={14} /> ODER-Filtergruppe hinzufügen
+        <CopyPlus size={14} /> Filter-Gruppe hinzufügen
       </button>
 
       <div className="mt-5 flex items-center justify-between gap-3">

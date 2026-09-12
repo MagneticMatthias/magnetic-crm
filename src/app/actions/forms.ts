@@ -34,6 +34,9 @@ export async function createLeadForm(formData: FormData) {
     deal_value: numOrZero(formData, 'deal_value'),
     ask_company: formData.get('ask_company') === 'on',
     ask_message: formData.get('ask_message') === 'on',
+    ask_email: formData.get('ask_email') === 'on',
+    ask_phone: formData.get('ask_phone') === 'on',
+    ask_last_name: formData.get('ask_last_name') === 'on',
   });
   if (error) throw new Error(error.message);
 
@@ -61,6 +64,9 @@ export async function updateLeadForm(formData: FormData) {
     deal_value: numOrZero(formData, 'deal_value'),
     ask_company: formData.get('ask_company') === 'on',
     ask_message: formData.get('ask_message') === 'on',
+    ask_email: formData.get('ask_email') === 'on',
+    ask_phone: formData.get('ask_phone') === 'on',
+    ask_last_name: formData.get('ask_last_name') === 'on',
     active: formData.get('active') === 'on',
   }).eq('id', String(formData.get('id')));
 

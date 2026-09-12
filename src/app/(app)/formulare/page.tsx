@@ -67,16 +67,15 @@ export default async function FormsPage() {
 
             <div>
               <label className="label" htmlFor="headline">Überschrift auf der Seite</label>
-              <input id="headline" name="headline" className="input" placeholder="Kostenloses Erstgespräch sichern" />
+              <input id="headline" name="headline" className="input" placeholder="Lass uns in Kontakt treten!" />
             </div>
 
             <div className="flex flex-wrap gap-4 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" name="ask_company" defaultChecked /> Firma abfragen
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" name="ask_message" defaultChecked /> Nachricht abfragen
-              </label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="ask_last_name" defaultChecked /> Nachname</label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="ask_email" defaultChecked /> E-Mail</label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="ask_phone" defaultChecked /> Telefon</label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="ask_company" /> Firma</label>
+              <label className="flex items-center gap-2"><input type="checkbox" name="ask_message" /> Nachricht</label>
             </div>
 
             <button className="btn-primary">Formular anlegen</button>
@@ -144,12 +143,11 @@ export default async function FormsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="ask_company" defaultChecked={f.ask_company} /> Firma
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" name="ask_message" defaultChecked={f.ask_message} /> Nachricht
-                  </label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="ask_last_name" defaultChecked={f.ask_last_name ?? true} /> Nachname</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="ask_email" defaultChecked={f.ask_email ?? true} /> E-Mail</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="ask_phone" defaultChecked={f.ask_phone ?? true} /> Telefon</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="ask_company" defaultChecked={f.ask_company} /> Firma</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="ask_message" defaultChecked={f.ask_message} /> Nachricht</label>
                   <label className="flex items-center gap-2">
                     <input type="checkbox" name="active" defaultChecked={f.active} /> aktiv
                   </label>

@@ -23,8 +23,8 @@ export const OPERATOR_LABEL: Record<FilterOperator, string> = {
   gte: 'Größer oder gleich',
   lt: 'Kleiner als',
   lte: 'Kleiner oder gleich',
-  is_empty: 'Ist leer',
-  not_empty: 'Ist nicht leer',
+  is_empty: 'Ist unbekannt',
+  not_empty: 'Ist bekannt',
   before_days: 'Ist vor',
   after_days: 'Ist nach',
 };

@@ -8,6 +8,7 @@ import DetailPanel, { NewContactButton } from '@/components/DetailPanel';
 import { CONTACT_FIELDS } from '@/lib/filters';
 import { createContactQuick, saveFilter } from '@/app/actions/records';
 import type { ContactWithPersons, FilterDefinition, SavedFilter } from '@/lib/types';
+import { useViewing } from '@/lib/presence';
 
 export default function ContactsView({
   rows, filter, savedFilters, initialOpen,
@@ -19,6 +20,7 @@ export default function ContactsView({
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(initialOpen ?? null);
+  useViewing(openId);
 
   return (
     <>

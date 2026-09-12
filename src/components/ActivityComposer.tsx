@@ -59,7 +59,7 @@ export default function ActivityComposer({
 
         {type === 'call' ? (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="label" htmlFor="call_kind">Gesprächstyp</label>
                 <select id="call_kind" name="call_kind" className="input" defaultValue="setting">
@@ -74,6 +74,14 @@ export default function ActivityComposer({
                   {(Object.keys(CALL_OUTCOME_LABEL) as CallOutcome[]).map((o) => (
                     <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="answered_by">Wer hat abgenommen?</label>
+                <select id="answered_by" name="answered_by" className="input" defaultValue="">
+                  <option value="">–</option>
+                  <option value="gatekeeper">Gatekeeper</option>
+                  <option value="entscheider">Entscheider</option>
                 </select>
               </div>
               <div>

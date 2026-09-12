@@ -8,6 +8,8 @@ import ColumnPicker from './ColumnPicker';
 import type { ColumnDef } from './columns';
 import { countRules, type FieldDef } from '@/lib/filters';
 import type { FilterDefinition, SavedFilter } from '@/lib/types';
+import { usePresence } from '@/lib/presence';
+import { initials } from '@/lib/format';
 
 type Props<T extends { id: string }> = {
   rows: T[];
@@ -36,6 +38,8 @@ export default function RecordTable<T extends { id: string }>({
   const [filterOpen, setFilterOpen] = useState<'closed' | 'menu' | 'builder'>('closed');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [visible, setVisible] = useState<string[]>(defaultColumns);
+  const others = usePresence();
+  const viewerOf = (id: string) => others.find((o) => o.viewing === id) ?? null;
 
   useEffect(() => {
     try {
@@ -182,31 +186,43 @@ export default function RecordTable<T extends { id: string }>({
                 </td>
               </tr>
             )}
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const viewer = viewerOf(row.id);
+              return (
               <tr
                 key={row.id}
                 onClick={() => onRowClick(row)}
+                title={viewer ? `${viewer.name} hat diesen Datensatz gerade geöffnet` : undefined}
+                style={viewer ? { background: `${viewer.color}14` } : undefined}
                 className={`cursor-pointer border-t border-line transition hover:bg-surface-2/50 ${
                   activeId === row.id ? 'bg-brand-soft/40' : ''
                 }`}
               >
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.id)}
-                    onChange={() => setSelected((s) => {
-                      const n = new Set(s);
-                      if (n.has(row.id)) n.delete(row.id); else n.add(row.id);
-                      return n;
-                    })}
-                    aria-label="Zeile auswählen"
-                  />
+                  {viewer ? (
+                    <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-offset-1"
+                          style={{ background: viewer.color, ['--tw-ring-color' as string]: viewer.color }}>
+                      {initials(viewer.name)}
+                    </span>
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(row.id)}
+                      onChange={() => setSelected((s) => {
+                        const n = new Set(s);
+                        if (n.has(row.id)) n.delete(row.id); else n.add(row.id);
+                        return n;
+                      })}
+                      aria-label="Zeile auswählen"
+                    />
+                  )}
                 </td>
                 {shownColumns.map((c) => (
                   <td key={c.key} className="td whitespace-nowrap text-[13px]">{c.render(row)}</td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
