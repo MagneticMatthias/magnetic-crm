@@ -37,6 +37,7 @@ Datenmodell, eigene Oberfläche, eigene Texte.
    - `supabase/03_ui_rework.sql`
    - `supabase/04_deal_panel.sql`
    - `supabase/05_callflow_forms.sql`
+   - `supabase/06_grants.sql` (Zugriff der API-Rollen; noetig, wenn beim Projekt "Automatically expose new tables" aus ist)
 3. `.env.example` nach `.env.local` kopieren und die Supabase-Werte eintragen.
 4. Installieren und starten:
 
