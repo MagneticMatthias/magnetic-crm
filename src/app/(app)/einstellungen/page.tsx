@@ -13,6 +13,7 @@ import { canManage } from '@/lib/auth';
 import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
 import { Trash2 } from 'lucide-react';
 import DangerZone from '@/components/DangerZone';
+import DialSettings from '@/components/DialSettings';
 
 export default async function SettingsPage() {
   const { supabase, orgId, profile } = await ctx();
@@ -57,6 +58,8 @@ export default async function SettingsPage() {
             Angemeldet als {profile.email} · Rolle {ROLE_LABEL[profile.role]}
           </p>
         </section>
+
+        <DialSettings />
 
         {/* Pipelines */}
         <section className="space-y-4">

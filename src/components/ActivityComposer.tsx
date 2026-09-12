@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Phone, StickyNote, Mail, CalendarDays } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
 import type { ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
+import { dialHref } from '@/lib/dial';
 
 const TABS: { type: ActivityType; label: string; icon: typeof Phone }[] = [
   { type: 'call', label: 'Anruf', icon: Phone },
@@ -38,7 +39,7 @@ export default function ActivityComposer({
           </button>
         ))}
         {type === 'call' && phone && (
-          <a href={`tel:${phone}`} className="btn-primary ml-auto !py-1 !px-3 text-xs">
+          <a href={dialHref(phone)} className="btn-primary ml-auto !py-1 !px-3 text-xs">
             <Phone size={13} /> {phone} anrufen
           </a>
         )}

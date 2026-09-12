@@ -6,6 +6,7 @@ import { Phone, PhoneOff, SkipForward, Pause, Play, Check } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
 import { contactName, eur, duration, primaryPerson } from '@/lib/format';
 import type { CallKind, CallOutcome, DealWithContact, Stage } from '@/lib/types';
+import { dialHref } from '@/lib/dial';
 
 type Props = {
   deals: DealWithContact[];
@@ -151,7 +152,7 @@ export default function PowerDialer({ deals, stages, defaultCallKind, logCall }:
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {phone ? (
-            <a href={`tel:${phone}`} className="btn-primary"
+            <a href={dialHref(phone)} className="btn-primary"
                onClick={() => { setRunning(true); }}>
               <Phone size={16} /> {phone}
             </a>

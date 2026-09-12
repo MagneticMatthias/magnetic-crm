@@ -25,6 +25,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
 import { dateTime, dateOnly, eur, initials, personName, primaryPerson } from '@/lib/format';
 import type { ContactPerson } from '@/lib/types';
+import { dialHref } from '@/lib/dial';
 
 type Tab = 'info' | 'activities' | 'notes';
 
@@ -189,7 +190,7 @@ function PersonRow({
           </div>
         </div>
 
-        <a href={person.phone ? `tel:${person.phone}` : undefined}
+        <a href={dialHref(person.phone)}
            className={`grid h-9 w-9 place-items-center rounded-lg border border-line hover:bg-surface-2 ${person.phone ? '' : 'pointer-events-none opacity-40'}`}
            aria-label="Anrufen">
           <Phone size={15} />
@@ -321,7 +322,7 @@ export default function DetailPanel({
 
           <div className="flex items-center overflow-hidden rounded-lg">
             <a
-              href={primary?.phone ? `tel:${primary.phone}` : undefined}
+              href={dialHref(primary?.phone)}
               onClick={() => { setTab('info'); setCallFlow({ autoStart: true }); }}
               className={`btn-primary rounded-r-none ${primary?.phone ? '' : 'pointer-events-none opacity-50'}`}
             >

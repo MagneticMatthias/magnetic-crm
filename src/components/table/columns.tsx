@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Users, ListTree, ExternalLink } from 'lucide-react';
 import { dateTime, eur, personName, primaryPerson } from '@/lib/format';
 import type { ContactWithPersons, DealWithContact } from '@/lib/types';
+import { dialHref } from '@/lib/dial';
 
 export type ColumnDef<T> = {
   key: string;
@@ -25,7 +26,7 @@ const PersonChip = ({ count }: { count: number }) =>
   );
 
 const Tel = ({ value }: { value: string | null | undefined }) =>
-  value ? <a href={`tel:${value}`} className="text-brand hover:underline"
+  value ? <a href={dialHref(value)} className="text-brand hover:underline"
               onClick={(e) => e.stopPropagation()}>{value}</a>
         : <span className="text-muted">–</span>;
 
