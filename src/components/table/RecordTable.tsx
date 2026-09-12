@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Search, Filter as FilterIcon, ChevronUp, ChevronDown, Pencil, Plus } from 'lucide-react';
+import { Search, Filter as FilterIcon, ChevronUp, ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import FilterBuilder from '@/components/FilterBuilder';
 import ColumnPicker from './ColumnPicker';
 import type { ColumnDef } from './columns';
@@ -21,6 +21,8 @@ type Props<T extends { id: string }> = {
   savedFilters: SavedFilter[];
   onSaveFilter: (name: string, def: FilterDefinition) => Promise<void>;
   onRowClick: (row: T) => void;
+  onDeleteSelected?: (ids: string[]) => Promise<void>;
+  deleteLabel?: string;
   activeId?: string | null;
   emptyText?: string;
   toolbarRight?: React.ReactNode;
@@ -28,8 +30,10 @@ type Props<T extends { id: string }> = {
 
 export default function RecordTable<T extends { id: string }>({
   rows, columns, defaultColumns, storageKey, fields, filter, savedFilters,
-  onSaveFilter, onRowClick, activeId, emptyText = 'Keine Datensätze.', toolbarRight,
+  onSaveFilter, onRowClick, onDeleteSelected, deleteLabel = 'Datensätze', activeId,
+  emptyText = 'Keine Datensätze.', toolbarRight,
 }: Props<T>) {
+  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -155,7 +159,27 @@ export default function RecordTable<T extends { id: string }>({
         <ColumnPicker columns={columns} visible={visible} onChange={changeColumns} />
 
         {selected.size > 0 && (
-          <span className="text-[13px] text-muted">{selected.size} ausgewählt</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] text-muted">{selected.size} ausgewählt</span>
+            {onDeleteSelected && (
+              <button
+                type="button"
+                className="btn-danger !py-1.5 text-[13px]"
+                disabled={deleting}
+                onClick={async () => {
+                  if (!window.confirm(`${selected.size} ${deleteLabel} endgültig löschen?`)) return;
+                  setDeleting(true);
+                  try {
+                    await onDeleteSelected([...selected]);
+                    setSelected(new Set());
+                    router.refresh();
+                  } finally { setDeleting(false); }
+                }}
+              >
+                <Trash2 size={14} /> {deleting ? 'Löschen …' : 'Löschen'}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="ml-auto flex items-center gap-2">{toolbarRight}</div>

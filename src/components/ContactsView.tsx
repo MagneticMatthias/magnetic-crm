@@ -6,7 +6,7 @@ import RecordTable from '@/components/table/RecordTable';
 import { CONTACT_COLUMNS, CONTACT_DEFAULT_COLUMNS } from '@/components/table/columns';
 import DetailPanel, { NewContactButton } from '@/components/DetailPanel';
 import { CONTACT_FIELDS } from '@/lib/filters';
-import { createContactQuick, saveFilter } from '@/app/actions/records';
+import { createContactQuick, saveFilter, deleteContacts } from '@/app/actions/records';
 import type { ContactWithPersons, FilterDefinition, SavedFilter } from '@/lib/types';
 import { useViewing } from '@/lib/presence';
 
@@ -34,6 +34,8 @@ export default function ContactsView({
         savedFilters={savedFilters}
         onSaveFilter={(name, def) => saveFilter('contacts', name, def)}
         onRowClick={(row) => setOpenId(row.id)}
+        onDeleteSelected={deleteContacts}
+        deleteLabel="Kontakte (inkl. Deals und Notizen)"
         activeId={openId}
         emptyText="Keine Kontakte gefunden."
         toolbarRight={

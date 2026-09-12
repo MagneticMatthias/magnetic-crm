@@ -11,7 +11,7 @@ import PanelConfigurator from '@/components/PanelConfigurator';
 import { Modal } from '@/components/ui';
 import DealForm from '@/components/DealForm';
 import { DEAL_FIELDS } from '@/lib/filters';
-import { saveFilter } from '@/app/actions/records';
+import { saveFilter, deleteDeals } from '@/app/actions/records';
 import { useViewing } from '@/lib/presence';
 import { createDeal } from '@/app/actions/crm';
 import type {
@@ -82,6 +82,8 @@ export default function PipelineView({
         savedFilters={savedFilters}
         onSaveFilter={(name, def) => saveFilter('deals', name, def)}
         onRowClick={(row) => row.contact_id && setOpen({ contactId: row.contact_id, dealId: row.id })}
+        onDeleteSelected={deleteDeals}
+        deleteLabel="Deals"
         activeId={null}
         emptyText="Keine Deals in dieser Phase."
         toolbarRight={

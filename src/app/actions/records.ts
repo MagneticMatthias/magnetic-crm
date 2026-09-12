@@ -286,3 +286,21 @@ export async function deleteSavedFilter(id: string) {
   revalidatePath('/kontakte');
   revalidatePath('/pipelines');
 }
+
+/* ------------------------------ Mehrfach loeschen ------------------------ */
+
+export async function deleteContacts(ids: string[]) {
+  if (!ids.length) return;
+  const { supabase } = await ctx();
+  const { error } = await supabase.from('contacts').delete().in('id', ids);
+  if (error) throw new Error(error.message);
+  refresh();
+}
+
+export async function deleteDeals(ids: string[]) {
+  if (!ids.length) return;
+  const { supabase } = await ctx();
+  const { error } = await supabase.from('deals').delete().in('id', ids);
+  if (error) throw new Error(error.message);
+  refresh();
+}
