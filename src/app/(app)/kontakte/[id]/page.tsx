@@ -5,14 +5,17 @@ import { ctx } from '@/lib/ctx';
 import { PageHeader } from '@/components/ui';
 import { Badge } from '@/components/Badge';
 import ContactDialog from '@/components/ContactDialog';
+import EmailComposer from '@/components/EmailComposer';
 import ActivityComposer from '@/components/ActivityComposer';
 import Timeline from '@/components/Timeline';
 import TaskList from '@/components/TaskList';
 import TaskComposer from '@/components/TaskComposer';
 import { updateContact, deleteContact, logActivity, createTask } from '@/app/actions/crm';
+import { sendDealEmail, fillTemplate } from '@/app/actions/email';
+import { smtpConfigured } from '@/lib/mailer';
 import { contactName, eur, dateOnly } from '@/lib/format';
 import { DEAL_STATUS_LABEL } from '@/lib/labels';
-import type { Contact, Profile } from '@/lib/types';
+import type { Contact, EmailTemplate, Profile } from '@/lib/types';
 
 export default async function ContactDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,13 +24,14 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
   const { data: contact } = await supabase.from('contacts').select('*').eq('id', id).maybeSingle();
   if (!contact) notFound();
 
-  const [{ data: deals }, { data: activities }, { data: tasks }, { data: team }] = await Promise.all([
+  const [{ data: deals }, { data: activities }, { data: tasks }, { data: team }, { data: templates }] = await Promise.all([
     supabase.from('deals').select('*, pipeline:pipelines(name), stage:pipeline_stages(name, color)')
       .eq('contact_id', id).order('created_at', { ascending: false }),
     supabase.from('activities').select('*, user:profiles(full_name, email)')
       .eq('contact_id', id).order('occurred_at', { ascending: false }).limit(100),
     supabase.from('tasks').select('*').eq('contact_id', id).order('done').order('due_at').limit(50),
     supabase.from('profiles').select('*').eq('org_id', orgId).eq('active', true),
+    supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
   ]);
 
   const c = contact as Contact;
@@ -36,6 +40,13 @@ export default async function ContactDetail({ params }: { params: Promise<{ id: 
     <>
       <PageHeader title={contactName(c)} subtitle={c.company ?? undefined}>
         <ContactDialog action={updateContact} team={(team ?? []) as Profile[]} values={c} mode="edit" />
+        <EmailComposer
+          sendAction={sendDealEmail}
+          fillAction={fillTemplate}
+          contact={c}
+          templates={(templates ?? []) as EmailTemplate[]}
+          smtpReady={smtpConfigured()}
+        />
         <form action={deleteContact}>
           <input type="hidden" name="id" value={c.id} />
           <button className="btn-danger"><Trash2 size={15} /> Löschen</button>

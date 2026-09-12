@@ -110,3 +110,38 @@ export type Task = {
   done: boolean;
   done_at: string | null;
 };
+
+export type LeadForm = {
+  id: string;
+  org_id: string;
+  slug: string;
+  name: string;
+  headline: string | null;
+  description: string | null;
+  pipeline_id: string | null;
+  stage_id: string | null;
+  owner_id: string | null;
+  source: string | null;
+  success_message: string | null;
+  ask_company: boolean;
+  ask_message: boolean;
+  deal_value: number;
+  active: boolean;
+};
+
+export type EmailTemplate = {
+  id: string;
+  org_id: string;
+  name: string;
+  subject: string;
+  body: string;
+};
+
+export type ActivityGoal = {
+  id: string;
+  org_id: string;
+  user_id: string | null;
+  calls_per_day: number;
+  conversations_per_day: number;
+  appointments_per_week: number;
+};

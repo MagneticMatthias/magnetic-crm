@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, KanbanSquare, Users, CheckSquare, PhoneCall,
-  BarChart3, Settings, Menu, X,
+  BarChart3, Settings, Menu, X, PhoneForwarded, Gauge, FileInput,
 } from 'lucide-react';
 
 const NAV = [
@@ -13,7 +13,10 @@ const NAV = [
   { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
   { href: '/kontakte', label: 'Kontakte', icon: Users },
   { href: '/aufgaben', label: 'Aufgaben', icon: CheckSquare },
+  { href: '/dialer', label: 'Power Dialer', icon: PhoneForwarded },
   { href: '/aktivitaeten', label: 'Aktivitäten', icon: PhoneCall },
+  { href: '/schlagzahl', label: 'Schlagzahl', icon: Gauge },
+  { href: '/formulare', label: 'Lead-Formulare', icon: FileInput },
   { href: '/berichte', label: 'Berichte', icon: BarChart3 },
   { href: '/einstellungen', label: 'Einstellungen', icon: Settings },
 ];

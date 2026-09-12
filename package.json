@@ -14,9 +14,11 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
+    "@types/nodemailer": "^8.0.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.45.0",
     "next": "16.3.5",
+    "nodemailer": "^10.0.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1"

@@ -6,20 +6,25 @@ import {
   createStage, updateStage, deleteStage,
   updateTeamMember, joinOrganization,
 } from '@/app/actions/crm';
+import { saveEmailSettings, createEmailTemplate, deleteEmailTemplate } from '@/app/actions/email';
+import { smtpConfigured } from '@/lib/mailer';
 import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
-import type { Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
+import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
 import { Trash2 } from 'lucide-react';
 
 export default async function SettingsPage() {
   const { supabase, orgId, profile } = await ctx();
   const manager = canManage(profile);
 
-  const [{ data: org }, { data: pipelines }, { data: stages }, { data: team }] = await Promise.all([
+  const [{ data: org }, { data: pipelines }, { data: stages }, { data: team },
+         { data: emailSettings }, { data: templates }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
     supabase.from('pipelines').select('*').eq('org_id', orgId).order('position'),
     supabase.from('pipeline_stages').select('*').order('position'),
     supabase.from('profiles').select('*').eq('org_id', orgId).order('full_name'),
+    supabase.from('email_settings').select('*').eq('org_id', orgId).maybeSingle(),
+    supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
   ]);
 
   const pipelineList = (pipelines ?? []) as Pipeline[];
@@ -124,6 +129,72 @@ export default async function SettingsPage() {
               </div>
             </div>
           ))}
+        </section>
+
+
+        {/* E-Mail */}
+        <section className="card p-5">
+          <h2 className="mb-1 text-sm font-semibold">E-Mail-Versand</h2>
+          <p className="mb-4 text-xs text-muted">
+            {smtpConfigured()
+              ? 'SMTP ist konfiguriert – du kannst direkt aus Kontakten und Deals senden.'
+              : 'Noch kein SMTP konfiguriert. Setze SMTP_HOST, SMTP_PORT, SMTP_USER und SMTP_PASS in der Server-Umgebung (Gmail-App-Passwort, Microsoft 365 oder jedes SMTP-Postfach).'}
+          </p>
+
+          <form action={saveEmailSettings} className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="from_name">Absendername</label>
+                <input id="from_name" name="from_name" className="input"
+                       defaultValue={emailSettings?.from_name ?? ''} placeholder="Vertrieb Magnetic" />
+              </div>
+              <div>
+                <label className="label" htmlFor="from_email">Absenderadresse</label>
+                <input id="from_email" name="from_email" type="email" className="input"
+                       defaultValue={emailSettings?.from_email ?? ''} placeholder="vertrieb@deine-domain.de" />
+              </div>
+            </div>
+            <div>
+              <label className="label" htmlFor="signature">Signatur</label>
+              <textarea id="signature" name="signature" className="input min-h-24"
+                        defaultValue={emailSettings?.signature ?? ''} />
+            </div>
+            <button className="btn-primary">Speichern</button>
+          </form>
+
+          <div className="mt-6 border-t border-line pt-5">
+            <h3 className="mb-1 text-sm font-semibold">Vorlagen</h3>
+            <p className="mb-3 text-xs text-muted">
+              Platzhalter: {'{{vorname}}'}, {'{{nachname}}'}, {'{{firma}}'}, {'{{absender}}'}
+            </p>
+
+            <div className="mb-4 space-y-2">
+              {((templates ?? []) as EmailTemplate[]).map((t) => (
+                <div key={t.id} className="flex items-start gap-3 rounded-lg border border-line p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="truncate text-xs text-muted">{t.subject}</p>
+                  </div>
+                  <form action={deleteEmailTemplate}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <button className="text-muted hover:text-lose" aria-label="Vorlage löschen">
+                      <Trash2 size={15} />
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+
+            <form action={createEmailTemplate} className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input name="name" className="input" placeholder="Name der Vorlage" required />
+                <input name="subject" className="input" placeholder="Betreff" required />
+              </div>
+              <textarea name="body" className="input min-h-24" required
+                        placeholder="Hallo {{vorname}}, …" />
+              <button className="btn-ghost">Vorlage anlegen</button>
+            </form>
+          </div>
         </section>
 
         {/* Team */}

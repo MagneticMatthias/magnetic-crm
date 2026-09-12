@@ -5,15 +5,18 @@ import { ctx } from '@/lib/ctx';
 import { PageHeader } from '@/components/ui';
 import { Badge } from '@/components/Badge';
 import DealDialog from '@/components/DealDialog';
+import EmailComposer from '@/components/EmailComposer';
 import StageSwitcher from '@/components/StageSwitcher';
 import ActivityComposer from '@/components/ActivityComposer';
 import Timeline from '@/components/Timeline';
 import TaskList from '@/components/TaskList';
 import TaskComposer from '@/components/TaskComposer';
 import { updateDeal, deleteDeal, logActivity, createTask, moveDeal } from '@/app/actions/crm';
+import { sendDealEmail, fillTemplate } from '@/app/actions/email';
+import { smtpConfigured } from '@/lib/mailer';
 import { contactName, eur, dateOnly, dateTime } from '@/lib/format';
 import { DEAL_STATUS_LABEL } from '@/lib/labels';
-import type { Contact, Deal, Profile, Stage } from '@/lib/types';
+import type { Contact, Deal, EmailTemplate, Profile, Stage } from '@/lib/types';
 
 export default async function DealDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,7 +31,7 @@ export default async function DealDetail({ params }: { params: Promise<{ id: str
 
   const d = deal as Deal & { contact: Contact | null; pipeline: { id: string; name: string } | null };
 
-  const [{ data: stages }, { data: activities }, { data: tasks }, { data: contacts }, { data: team }, { data: history }] =
+  const [{ data: stages }, { data: activities }, { data: tasks }, { data: contacts }, { data: team }, { data: history }, { data: templates }] =
     await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', d.pipeline_id).order('position'),
       supabase.from('activities').select('*, user:profiles(full_name, email)')
@@ -39,6 +42,7 @@ export default async function DealDetail({ params }: { params: Promise<{ id: str
       supabase.from('deal_stage_history')
         .select('changed_at, to_stage:pipeline_stages!deal_stage_history_to_stage_id_fkey(name)')
         .eq('deal_id', id).order('changed_at', { ascending: false }).limit(10),
+      supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
     ]);
 
   const stageList = (stages ?? []) as Stage[];
@@ -64,6 +68,14 @@ export default async function DealDetail({ params }: { params: Promise<{ id: str
             setter_id: d.setter_id, closer_id: d.closer_id,
             expected_close_date: d.expected_close_date, next_step: d.next_step,
           }}
+        />
+        <EmailComposer
+          sendAction={sendDealEmail}
+          fillAction={fillTemplate}
+          contact={d.contact}
+          dealId={d.id}
+          templates={(templates ?? []) as EmailTemplate[]}
+          smtpReady={smtpConfigured()}
         />
         <form action={deleteDeal}>
           <input type="hidden" name="id" value={d.id} />
