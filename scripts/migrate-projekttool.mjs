@@ -33,13 +33,33 @@ const CLEAR = process.env.CLEAR === '1';
 /* ------------------------------ PocketBase ------------------------------ */
 let pbToken = '';
 async function pbLogin() {
-  const r = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identity: PB_EMAIL, password: PB_PASS }),
-  });
-  if (!r.ok) throw new Error(`PocketBase-Login fehlgeschlagen: ${r.status} ${await r.text()}`);
-  pbToken = (await r.json()).token;
+  // PocketBase >= 0.23: _superusers, aeltere Versionen: /api/admins
+  const attempts = [
+    `${PB_URL}/api/collections/_superusers/auth-with-password`,
+    `${PB_URL}/api/admins/auth-with-password`,
+  ];
+  let last = '';
+  for (const url of attempts) {
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: PB_EMAIL, email: PB_EMAIL, password: PB_PASS }),
+      });
+    } catch (e) {
+      throw new Error(`PocketBase unter ${PB_URL} nicht erreichbar (${e.message}). Stimmt PB_URL? Läuft der Container?`);
+    }
+    if (r.ok) { pbToken = (await r.json()).token; return; }
+    last = `${r.status} ${await r.text()}`;
+    if (r.status !== 404) break;
+  }
+  throw new Error(
+    `PocketBase-Login fehlgeschlagen (${last}).\n` +
+    `   E-Mail: ${PB_EMAIL} · Passwort: ${PB_PASS.length} Zeichen, beginnt mit "${PB_PASS.slice(0, 2)}…"\n` +
+    `   Wenn die Zeichenzahl nicht stimmt, wurde das Passwort von der Shell zerlegt – in migrate.env in 'einfache Anführungszeichen' setzen.`,
+  );
 }
+
 async function pbAll(collection) {
   const items = [];
   for (let page = 1; ; page++) {
