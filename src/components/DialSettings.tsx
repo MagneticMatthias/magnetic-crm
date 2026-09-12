@@ -11,7 +11,7 @@ export default function DialSettings() {
       <h2 className="flex items-center gap-2 text-sm font-semibold"><Phone size={15} /> Telefon-App</h2>
       <p className="mt-1 text-xs text-muted">
         Welche App beim Klick auf eine Nummer aufgeht, legt dein Betriebssystem fest
-        (Mac: FaceTime → Einstellungen → „Standard für Anrufe"). Reagiert deine App nicht auf
+        (Mac: FaceTime → Einstellungen → „Standard für Anrufe“). Reagiert deine App nicht auf
         <code> tel:</code>, hier das Schema wechseln. Gilt nur für diesen Browser.
       </p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
