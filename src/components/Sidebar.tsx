@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, ListTree, BarChart3, FileInput, Settings,
-  Menu, X, PhoneForwarded, CheckSquare, Gauge, PhoneCall,
+  Menu, X, PhoneForwarded, CheckSquare, Gauge, PhoneCall, Upload,
 } from 'lucide-react';
 import { initials } from '@/lib/format';
 import type { Pipeline } from '@/lib/types';
@@ -31,7 +31,10 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: '/schlagzahl', label: 'Schlagzahl', icon: Gauge },
     ],
   },
-  { title: 'Inhalte', items: [{ href: '/formulare', label: 'Formulare', icon: FileInput }] },
+  { title: 'Inhalte', items: [
+    { href: '/formulare', label: 'Formulare', icon: FileInput },
+    { href: '/import', label: 'CSV-Import', icon: Upload },
+  ] },
   { title: 'System', items: [{ href: '/einstellungen', label: 'Einstellungen', icon: Settings }] },
 ];
 

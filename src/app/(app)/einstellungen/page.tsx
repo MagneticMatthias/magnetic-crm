@@ -12,6 +12,7 @@ import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
 import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
 import { Trash2 } from 'lucide-react';
+import DangerZone from '@/components/DangerZone';
 
 export default async function SettingsPage() {
   const { supabase, orgId, profile } = await ctx();
@@ -226,6 +227,7 @@ export default async function SettingsPage() {
             ))}
           </div>
         </section>
+        {profile.role === 'admin' && <DangerZone />}
       </div>
     </>
   );
