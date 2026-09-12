@@ -1,0 +1,13 @@
+services:
+  crm:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: magnetic-crm:latest
+    container_name: magnetic-crm
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3010:3000"   # nur lokal, der Reverse Proxy leitet weiter
