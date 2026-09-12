@@ -64,6 +64,23 @@ SMTP_PASS=<App-Passwort>
 Absendername, Absenderadresse und Signatur stellst du dann in der App unter
 **Einstellungen → E-Mail-Versand** ein.
 
+### Kostenlos betreiben (Free-Plan)
+
+Der Free-Plan pausiert Projekte nach 7 Tagen ohne Anfrage und hat keine
+automatischen Backups. Beides deckt das Repo mit zwei GitHub-Actions ab:
+
+| Workflow | Was er tut | Secrets |
+|---|---|---|
+| `crm-keepalive.yml` | alle 2 Tage eine Mini-Abfrage → Projekt pausiert nie | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+| `crm-backup.yml` | täglich `pg_dump`, 30 Tage als Artefakt, optional per SCP auf deinen Server | `SUPABASE_DB_URL` (Session-Pooler-URL), optional `BACKUP_SSH_*` |
+
+Secrets anlegen unter *GitHub → Settings → Secrets and variables → Actions*.
+Beide Workflows lassen sich über „Run workflow" sofort testen.
+Wiederherstellen: siehe [`BACKUP.md`](./BACKUP.md).
+
+Beim Anlegen des Supabase-Projekts **Region Frankfurt (eu-central-1)** wählen
+und unter *Organization → Legal* den AV-Vertrag (DPA) abschließen.
+
 ### Team einladen
 
 Kolleginnen und Kollegen registrieren sich selbst. Ein Administrator ordnet sie
