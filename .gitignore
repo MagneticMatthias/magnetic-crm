@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Zugangsdaten fuer die Migration (nur lokal)
+migrate.env
