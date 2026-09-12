@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Zugangsdaten fuer die Migration (nur lokal)
 migrate.env
+
+# GHCR-Token fuer nas-update.sh (nur auf dem NAS)
+ghcr.token

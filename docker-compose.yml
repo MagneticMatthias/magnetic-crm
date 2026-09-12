@@ -1,11 +1,8 @@
+# Magnetic_CRM auf dem NAS. Das Image wird von GitHub gebaut (build-image.yml)
+# und hier nur noch gezogen - kein Build mehr auf dem NAS.
 services:
   crm:
-    build:
-      context: .
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    image: magnetic-crm:latest
+    image: ghcr.io/magneticmatthias/magnetic-crm:latest
     container_name: magnetic-crm
     restart: unless-stopped
     env_file: .env

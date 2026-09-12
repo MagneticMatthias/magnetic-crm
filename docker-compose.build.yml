@@ -1,0 +1,15 @@
+# Nur fuer lokales Bauen ohne GitHub (z. B. zum Testen):
+#   docker compose -f docker-compose.build.yml up -d --build
+services:
+  crm:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: magnetic-crm:local
+    container_name: magnetic-crm
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3010:3000"

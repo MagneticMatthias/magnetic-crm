@@ -1,34 +1,67 @@
 # Magnetic_CRM auf dem eigenen Server
 
-Die App läuft als Docker-Container auf Port 3010 (nur lokal). Davor sitzt der
-Reverse Proxy, der auf dem Server ohnehin schon die anderen Apps bedient.
+## So funktioniert das Deployment
 
-## 0. Was läuft auf dem Server? (30 Sekunden)
-
-```bash
-docker ps --format '{{.Names}}  {{.Image}}  {{.Ports}}' 2>/dev/null || echo "kein Docker"
-ls /etc/nginx/sites-enabled /etc/caddy 2>/dev/null
-which pm2 && pm2 ls
+```
+Aenderung  ->  git push (main)  ->  GitHub baut Docker-Image  ->  NAS zieht es alle 15 Min
 ```
 
-Zeigt `traefik`, `caddy` oder `nginx-proxy` in der Docker-Liste → Abschnitt A.
-Zeigt `/etc/nginx/sites-enabled` Dateien → Abschnitt B.
-Zeigt `/etc/caddy/Caddyfile` → Abschnitt C.
+Du musst nach einer Aenderung nichts auf dem NAS tun. Ein Push auf `main`
+reicht - von jedem Rechner aus.
 
-## 1. Einmalig: Code holen und konfigurieren
+## Einmalige Einrichtung
+
+### 1. GitHub-Secrets (Repo -> Settings -> Secrets and variables -> Actions)
+
+| Secret | Wert |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Publishable Key (`sb_publishable_…`) |
+| `SUPABASE_URL` | dieselbe Project URL (fuer Keep-alive) |
+| `SUPABASE_ANON_KEY` | derselbe Publishable Key (fuer Keep-alive) |
+| `SUPABASE_DB_URL` | Session-Pooler-URL (fuer das Backup) |
+
+### 2. Token fuer das NAS (liest private Images aus GHCR)
+
+GitHub -> Settings -> Developer settings -> Personal access tokens -> **Tokens (classic)**
+-> Generate new token -> Haken nur bei **read:packages** -> erzeugen -> Token kopieren.
+
+Auf dem NAS-Ordner (vom Mac aus, Laufwerk verbunden):
 
 ```bash
-cd /opt          # oder wo deine anderen Apps liegen
-git clone https://github.com/MagneticMatthias/magnetic-crm.git
-cd magnetic-crm
-cp .env.example .env
-nano .env        # NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY eintragen, SMTP optional
-./deploy.sh
+cd /Volumes/01_Büro_Matthias/18_Magnetic_CRM
+echo 'ghp_DEIN_TOKEN' > ghcr.token
 ```
 
-Danach antwortet `curl -I http://127.0.0.1:3010/login` mit `HTTP/1.1 200`.
+### 3. Aufgabenplaner im DSM
 
-## 2. Reverse Proxy – nur EINEN Abschnitt anwenden
+Systemsteuerung -> Aufgabenplaner -> Erstellen -> Geplante Aufgabe -> **Benutzerdefiniertes Skript**
+
+- Aufgabe: `Magnetic_CRM aktualisieren`, Benutzer: **root**
+- Zeitplan: taeglich, wiederholen **alle 15 Minuten**
+- Skript:
+  ```bash
+  bash /volume1/01_Büro_Matthias/18_Magnetic_CRM/nas-update.sh
+  ```
+  (Pfad ggf. anpassen - `/volume1/` ist der Standard fuer die erste Freigabe)
+
+Einmal "Ausfuehren" anklicken, danach laeuft es von selbst.
+
+### 4. Erster Start
+
+Im Container Manager beim Projekt `magnetic-crm`: Aktion -> **Bereinigen**, dann
+Aktion -> **Erstellen** (er zieht jetzt das Image statt zu bauen).
+
+## Erreichbarkeit
+
+- LAN: http://magnetic-nas:3010
+- Unterwegs: Tailscale an, gleiche Adresse (oder Tailscale-IP des NAS + `:3010`)
+
+## Optional: oeffentliche Domain mit Reverse Proxy
+
+Nur noetig, wenn das CRM ohne Tailscale aus dem Internet erreichbar sein soll
+(z. B. fuer oeffentliche Lead-Formulare).
+
 
 ### A) Docker mit Traefik / nginx-proxy / Caddy-Docker-Proxy
 

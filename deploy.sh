@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Auf dem Server ausfuehren: holt den neuesten Stand, baut das Image neu
-# und startet den Container ohne sichtbare Downtime.
+# Manuelles Update auf dem NAS (normalerweise macht das nas-update.sh per Zeitplan).
 set -euo pipefail
 cd "$(dirname "$0")"
-git pull --ff-only
-docker compose build --pull
-docker compose up -d
-docker image prune -f >/dev/null
+git pull --ff-only 2>/dev/null || true
+./nas-update.sh
 echo "Magnetic_CRM laeuft: $(docker compose ps --format '{{.Status}}' crm)"
