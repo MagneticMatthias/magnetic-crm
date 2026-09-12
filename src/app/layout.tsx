@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Vertriebssuite – CRM',
+  title: 'Magnetic_CRM',
   description: 'CRM für Vertriebsteams nach dem Setter-Closer-Prinzip',
 };
 

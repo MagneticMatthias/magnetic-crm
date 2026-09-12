@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Phone, PhoneOff, SkipForward, Pause, Play, Check } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
-import { contactName, eur, duration } from '@/lib/format';
+import { contactName, eur, duration, primaryPerson } from '@/lib/format';
 import type { CallKind, CallOutcome, DealWithContact, Stage } from '@/lib/types';
 
 type Props = {
@@ -80,7 +80,7 @@ export default function PowerDialer({ deals, stages, defaultCallKind, logCall }:
       outcome: finalOutcome,
       durationSeconds: seconds,
       note: note.trim() || null,
-      phone: current.contact?.phone ?? null,
+      phone: primaryPerson(current.contact?.persons)?.phone ?? null,
       nextStageId: nextStage || null,
       followUpAt: followUp ? new Date(followUp).toISOString() : null,
     };
@@ -121,7 +121,7 @@ export default function PowerDialer({ deals, stages, defaultCallKind, logCall }:
     );
   }
 
-  const phone = current.contact?.phone;
+  const phone = primaryPerson(current.contact?.persons)?.phone;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

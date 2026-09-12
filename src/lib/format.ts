@@ -22,10 +22,23 @@ export const duration = (seconds: number | null | undefined) => {
   return m ? `${m}:${String(s).padStart(2, '0')} min` : `${s} s`;
 };
 
-export const contactName = (c?: { first_name?: string | null; last_name?: string | null; company?: string | null } | null) => {
+type PersonLike = { first_name?: string | null; last_name?: string | null };
+
+export const personName = (p?: PersonLike | null) =>
+  [p?.first_name, p?.last_name].filter(Boolean).join(' ').trim();
+
+/** Hauptansprechpartner eines Kontakts (oder der erste in der Liste). */
+export const primaryPerson = <T extends { is_primary?: boolean }>(persons?: T[] | null): T | null =>
+  persons?.find((p) => p.is_primary) ?? persons?.[0] ?? null;
+
+/** Anzeigename einer Kontaktzeile: Firma, sonst Hauptansprechpartner. */
+export const contactName = (c?: {
+  company?: string | null;
+  persons?: PersonLike[] | null;
+} | null) => {
   if (!c) return 'Ohne Kontakt';
-  const name = [c.first_name, c.last_name].filter(Boolean).join(' ').trim();
-  return name || c.company || 'Unbenannt';
+  const person = personName(c.persons?.[0]);
+  return c.company || person || 'Unbenannt';
 };
 
 export const initials = (name: string) =>

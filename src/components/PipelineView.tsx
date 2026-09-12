@@ -1,0 +1,111 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
+import RecordTable from '@/components/table/RecordTable';
+import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS } from '@/components/table/columns';
+import DetailPanel from '@/components/DetailPanel';
+import { Modal } from '@/components/ui';
+import DealForm from '@/components/DealForm';
+import { DEAL_FIELDS } from '@/lib/filters';
+import { saveFilter } from '@/app/actions/records';
+import { createDeal } from '@/app/actions/crm';
+import type {
+  ContactWithPersons, DealWithContact, FilterDefinition, Pipeline, Profile, SavedFilter, Stage,
+} from '@/lib/types';
+
+export default function PipelineView({
+  pipeline, stages, stageId, counts, rows, filter, savedFilters, contacts, team, initialOpen,
+}: {
+  pipeline: Pipeline;
+  stages: Stage[];
+  stageId: string | null;
+  counts: Record<string, number>;
+  rows: DealWithContact[];
+  filter: FilterDefinition | null;
+  savedFilters: SavedFilter[];
+  contacts: ContactWithPersons[];
+  team: Profile[];
+  initialOpen?: string | null;
+}) {
+  const router = useRouter();
+  const [openContact, setOpenContact] = useState<string | null>(initialOpen ?? null);
+  const [creating, setCreating] = useState(false);
+
+  const tabHref = (id: string | null) => `/pipelines?p=${pipeline.id}${id ? `&s=${id}` : ''}`;
+
+  return (
+    <>
+      <div className="mb-3 flex gap-1 overflow-x-auto pb-1">
+        <Link
+          href={tabHref(null)}
+          className={`shrink-0 rounded-lg border px-3.5 py-2 text-[13px] transition ${
+            !stageId ? 'border-line bg-surface font-medium shadow-sm' : 'border-transparent text-muted hover:bg-surface-2'
+          }`}
+        >
+          Alle <span className="ml-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{rows.length}</span>
+        </Link>
+        {stages.map((s) => {
+          const active = s.id === stageId;
+          return (
+            <Link
+              key={s.id}
+              href={tabHref(s.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] transition ${
+                active ? 'border-line bg-surface font-medium shadow-sm' : 'border-transparent text-muted hover:bg-surface-2'
+              }`}
+            >
+              {s.name}
+              <span className="rounded-full px-1.5 py-0.5 text-[11px] font-medium"
+                    style={{ background: `${s.color}22`, color: s.color }}>
+                {counts[s.id] ?? 0}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <RecordTable
+        rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
+        columns={DEAL_COLUMNS}
+        defaultColumns={DEAL_DEFAULT_COLUMNS}
+        storageKey={`deals:${pipeline.id}`}
+        fields={DEAL_FIELDS}
+        filter={filter}
+        savedFilters={savedFilters}
+        onSaveFilter={(name, def) => saveFilter('deals', name, def)}
+        onRowClick={(row) => row.contact_id && setOpenContact(row.contact_id)}
+        activeId={null}
+        emptyText="Keine Deals in dieser Phase."
+        toolbarRight={
+          <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
+            <Plus size={16} /> Deal hinzufügen
+          </button>
+        }
+      />
+
+      <Modal open={creating} onClose={() => setCreating(false)} title="Neuer Deal" wide>
+        <DealForm
+          action={async (fd) => { await createDeal(fd); router.refresh(); }}
+          stages={stages}
+          contacts={contacts}
+          team={team}
+          values={{ stage_id: stageId ?? stages[0]?.id }}
+          submitLabel="Deal anlegen"
+          onDone={() => setCreating(false)}
+        />
+      </Modal>
+
+      {openContact && (
+        <DetailPanel
+          key={openContact}
+          contactId={openContact}
+          onClose={() => { setOpenContact(null); router.refresh(); }}
+          onDeleted={() => router.refresh()}
+        />
+      )}
+    </>
+  );
+}

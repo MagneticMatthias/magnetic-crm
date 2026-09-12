@@ -6,62 +6,11 @@ import { ctx, str, numOrZero } from '@/lib/ctx';
 
 function refreshAll() {
   revalidatePath('/dashboard');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
   revalidatePath('/kontakte');
   revalidatePath('/aufgaben');
   revalidatePath('/aktivitaeten');
   revalidatePath('/berichte');
-}
-
-/* ------------------------------ Kontakte ------------------------------ */
-
-export async function createContact(formData: FormData) {
-  const { supabase, orgId, profile } = await ctx();
-  const { data, error } = await supabase.from('contacts').insert({
-    org_id: orgId,
-    first_name: str(formData, 'first_name'),
-    last_name: str(formData, 'last_name'),
-    email: str(formData, 'email'),
-    phone: str(formData, 'phone'),
-    company: str(formData, 'company'),
-    job_title: str(formData, 'job_title'),
-    lead_source: str(formData, 'lead_source'),
-    notes: str(formData, 'notes'),
-    owner_id: str(formData, 'owner_id') ?? profile.id,
-    created_by: profile.id,
-  }).select('id').single();
-  if (error) throw new Error(error.message);
-
-  refreshAll();
-  if (formData.get('redirect') === 'detail') redirect(`/kontakte/${data.id}`);
-}
-
-export async function updateContact(formData: FormData) {
-  const { supabase } = await ctx();
-  const id = String(formData.get('id'));
-  const { error } = await supabase.from('contacts').update({
-    first_name: str(formData, 'first_name'),
-    last_name: str(formData, 'last_name'),
-    email: str(formData, 'email'),
-    phone: str(formData, 'phone'),
-    company: str(formData, 'company'),
-    job_title: str(formData, 'job_title'),
-    lead_source: str(formData, 'lead_source'),
-    notes: str(formData, 'notes'),
-    owner_id: str(formData, 'owner_id'),
-  }).eq('id', id);
-  if (error) throw new Error(error.message);
-
-  refreshAll();
-  revalidatePath(`/kontakte/${id}`);
-}
-
-export async function deleteContact(formData: FormData) {
-  const { supabase } = await ctx();
-  const { error } = await supabase.from('contacts').delete().eq('id', String(formData.get('id')));
-  if (error) throw new Error(error.message);
-  refreshAll();
-  redirect('/kontakte');
 }
 
 /* -------------------------------- Deals ------------------------------- */
@@ -259,7 +208,7 @@ export async function createPipeline(formData: FormData) {
   ]);
 
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 export async function renamePipeline(formData: FormData) {
@@ -268,14 +217,14 @@ export async function renamePipeline(formData: FormData) {
     .update({ name: str(formData, 'name') ?? 'Pipeline' })
     .eq('id', String(formData.get('id')));
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 export async function deletePipeline(formData: FormData) {
   const { supabase } = await ctx();
   await supabase.from('pipelines').delete().eq('id', String(formData.get('id')));
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 export async function createStage(formData: FormData) {
@@ -294,7 +243,7 @@ export async function createStage(formData: FormData) {
     is_lost: formData.get('is_lost') === 'on',
   });
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 export async function updateStage(formData: FormData) {
@@ -307,7 +256,7 @@ export async function updateStage(formData: FormData) {
     is_lost: formData.get('is_lost') === 'on',
   }).eq('id', String(formData.get('id')));
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 export async function deleteStage(formData: FormData) {
@@ -315,7 +264,7 @@ export async function deleteStage(formData: FormData) {
   const { error } = await supabase.from('pipeline_stages').delete().eq('id', String(formData.get('id')));
   if (error) throw new Error('Phase enthält noch Deals – bitte zuerst verschieben.');
   revalidatePath('/einstellungen');
-  revalidatePath('/pipeline');
+  revalidatePath('/pipelines');
 }
 
 /* ----------------------------- Team/Rollen ---------------------------- */

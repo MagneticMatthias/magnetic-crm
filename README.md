@@ -1,18 +1,20 @@
-# Vertriebssuite – CRM
+# Magnetic_CRM
 
 Ein schlankes CRM für Vertriebsteams nach dem **Setter-Closer-Prinzip**.
 Next.js (App Router) + Supabase (Auth, Postgres, Row Level Security, Realtime).
 
-Funktional an SalesSuite angelehnt, aber eigenständig gebaut: eigenes Datenmodell,
-eigene Oberfläche, eigene Texte. Kein Code und keine Inhalte von dort übernommen.
+Funktional an gängige Setter-Closer-CRMs angelehnt, aber eigenständig gebaut: eigenes
+Datenmodell, eigene Oberfläche, eigene Texte.
 
 ## Funktionsumfang
 
 | Bereich | Was drin ist |
 |---|---|
 | **Pipelines** | Beliebig viele Pipelines (Setting, Closing, Upsell, Reaktivierung, Agenturen, Trainings) mit frei konfigurierbaren Phasen, Wahrscheinlichkeit, Farbe, Gewonnen-/Verloren-Kennzeichnung |
-| **Board** | Kanban mit Drag & Drop, Summen je Phase, Schnellanlage direkt in der Spalte |
-| **Kontakte** | Stammdaten, Leadquelle, Verantwortlicher, Notizen, Volltext-Filter, verknüpfte Deals |
+| **Pipeline-Ansicht** | Phasen als Tabs mit Zählern, darunter die Deal-Tabelle; Phase direkt im Panel wechseln |
+| **Kontakte** | Kontakt = Firma mit beliebig vielen Ansprechpartnern (Hauptansprechpartner markiert), Website, Adresse, Leadherkunft, Opener-Kürzel; Tabelle mit Spaltenwahl und Mehrfachauswahl |
+| **Filter** | Filter-Builder mit Feld / Bedingung / Wert, ODER-Gruppen, Datumsbedingungen („Zuletzt kontaktiert ist vor X Tagen"), speicherbare Filter |
+| **Detail-Panel** | Slide-over mit Tabs Kontakt-Info (Deal-Status, Ansprechpartner, Stammdaten – Felder speichern beim Verlassen), Aktivitäten und Notizen (Rich-Text, anheften) |
 | **Deals** | Wert, Phase, Setter, Closer, Leadquelle, erwarteter Abschluss, nächster Schritt, Phasen-Historie |
 | **Lead Management** | Strukturiertes Call-Logging (Opening / Setting / Closing / Follow-up) mit Ergebnis, Dauer, Notiz – kein Freitext-Chaos |
 | **Power Dialer** | Arbeitet eine Phase Deal für Deal ab: anrufen, Timer, Ergebnis per Klick, Deal automatisch weiterschieben, Wiedervorlage anlegen, automatisch zum nächsten |
@@ -30,6 +32,7 @@ eigene Oberfläche, eigene Texte. Kein Code und keine Inhalte von dort übernomm
 2. Im SQL-Editor nacheinander ausführen:
    - `supabase/schema.sql`
    - `supabase/02_features.sql`
+   - `supabase/03_ui_rework.sql`
 3. `.env.example` nach `.env.local` kopieren und die Supabase-Werte eintragen.
 4. Installieren und starten:
 
@@ -68,16 +71,17 @@ unter **Einstellungen → Team** der passenden Rolle zu.
 src/
   app/
     (app)/            Geschützter Bereich mit Sidebar-Shell
-      dashboard/ pipeline/ kontakte/ deals/ dialer/
-      aufgaben/ aktivitaeten/ schlagzahl/ formulare/ berichte/ einstellungen/
+      dashboard/ kontakte/ pipelines/ dialer/ aufgaben/
+      aktivitaeten/ schlagzahl/ formulare/ sales-controlling/ einstellungen/
     f/[slug]/         Öffentliche Lead-Formulare (ohne Login)
     login/ onboarding/
     actions/          Server Actions (crm, dialer, email, forms, goals, org, auth)
-  components/         UI-Bausteine, Board, Dialer, Charts, Composer
+  components/         DetailPanel, FilterBuilder, RecordTable, Dialer, Charts, Composer
   lib/                Supabase-Clients, Typen, Labels, Formatierung, Mailer
 supabase/
   schema.sql          Kerntabellen, Trigger, RLS
   02_features.sql     Dialer, E-Mail, Formulare, Ziele, Realtime
+  03_ui_rework.sql    Ansprechpartner, Notizen, gespeicherte Filter
 ```
 
 **Sicherheit:** Jede Tabelle hat Row Level Security auf `org_id`. Anonyme Besucher

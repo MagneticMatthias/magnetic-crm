@@ -63,3 +63,12 @@ export const LEAD_SOURCES = [
   'Meta Ads', 'Google Ads', 'YouTube', 'TikTok', 'LinkedIn', 'Empfehlung',
   'Kaltakquise', 'Webinar', 'Website', 'Messe', 'Sonstige',
 ];
+
+export const COUNTRIES = ['Deutschland', 'Österreich', 'Schweiz'];
+
+/** Laendervorwahlen fuer die Telefoneingabe im Detail-Panel. */
+export const DIAL_CODES = [
+  { code: '+49', flag: '🇩🇪', label: 'Deutschland' },
+  { code: '+43', flag: '🇦🇹', label: 'Österreich' },
+  { code: '+41', flag: '🇨🇭', label: 'Schweiz' },
+];

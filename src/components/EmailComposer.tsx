@@ -3,17 +3,19 @@
 import { useState } from 'react';
 import { Mail, Send } from 'lucide-react';
 import { Modal } from '@/components/ui';
-import type { Contact, EmailTemplate } from '@/lib/types';
+import type { ContactPerson, EmailTemplate } from '@/lib/types';
 
 export default function EmailComposer({
-  sendAction, fillAction, contact, dealId, templates, smtpReady,
+  sendAction, fillAction, contact, dealId, templates, smtpReady, variant = 'button',
 }: {
   sendAction: (fd: FormData) => Promise<void>;
-  fillAction: (id: string, c: Partial<Contact>) => Promise<{ subject: string; body: string } | null>;
-  contact: Contact | null;
+  fillAction: (id: string, c: Partial<ContactPerson> & { company?: string | null }) => Promise<{ subject: string; body: string } | null>;
+  /** Empfaenger: Hauptansprechpartner plus Firmenname fuer Platzhalter. */
+  contact: { id: string; email: string | null; first_name?: string | null; last_name?: string | null; company?: string | null } | null;
   dealId?: string;
   templates: EmailTemplate[];
   smtpReady: boolean;
+  variant?: 'button' | 'ghost';
 }) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState('');
@@ -32,7 +34,7 @@ export default function EmailComposer({
 
   return (
     <>
-      <button className="btn-ghost" onClick={() => setOpen(true)} disabled={disabled}
+      <button className={variant === 'ghost' ? 'btn-ghost' : 'btn-ghost'} onClick={() => setOpen(true)} disabled={disabled}
               title={disabled ? 'Kontakt hat keine E-Mail-Adresse' : undefined}>
         <Mail size={15} /> E-Mail
       </button>

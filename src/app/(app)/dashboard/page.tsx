@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const [
     { data: deals }, { data: pipelines }, { data: activities }, { data: tasks },
   ] = await Promise.all([
-    supabase.from('deals').select('*, contact:contacts(first_name, last_name, company)').eq('org_id', orgId),
+    supabase.from('deals').select('*, contact:contacts(company, persons:contact_persons(first_name, last_name))').eq('org_id', orgId),
     supabase.from('pipelines').select('*').eq('org_id', orgId).eq('archived', false).order('position'),
     supabase.from('activities').select('*, user:profiles(full_name, email)')
       .eq('org_id', orgId).gte('occurred_at', last14.toISOString())
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
       .order('due_at', { nullsFirst: false }).limit(8),
   ]);
 
-  const allDeals = (deals ?? []) as (Deal & { contact: { first_name: string | null; last_name: string | null; company: string | null } | null })[];
+  const allDeals = (deals ?? []) as (Deal & { contact: { company: string | null; persons: { first_name: string | null; last_name: string | null }[] } | null })[];
   const open = allDeals.filter((d) => d.status === 'offen');
   const wonMonth = allDeals.filter((d) => d.status === 'gewonnen' && d.won_at && d.won_at >= monthStart);
   const lostMonth = allDeals.filter((d) => d.status === 'verloren' && d.lost_at && d.lost_at >= monthStart);
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
               <ul className="space-y-1.5">
                 {hotDeals.map((d) => (
                   <li key={d.id}>
-                    <Link href={`/deals/${d.id}`}
+                    <Link href={`/pipelines?p=${d.pipeline_id}&open=${d.contact_id ?? ''}`}
                           className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-surface-2">
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{d.title}</span>

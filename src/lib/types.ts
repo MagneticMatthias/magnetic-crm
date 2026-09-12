@@ -39,21 +39,81 @@ export type Stage = {
   color: string;
 };
 
-export type Contact = {
+export type ContactPerson = {
   id: string;
   org_id: string;
+  contact_id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
   phone: string | null;
-  company: string | null;
   job_title: string | null;
+  is_primary: boolean;
+  position: number;
+};
+
+/** Ein Kontakt ist die Firma bzw. der Datensatz; Personen haengen daran. */
+export type Contact = {
+  id: string;
+  org_id: string;
+  company: string | null;
+  website: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
   lead_source: string | null;
+  opener_kuerzel: string | null;
   notes: string | null;
   owner_id: string | null;
+  last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type ContactWithPersons = Contact & {
+  persons: ContactPerson[];
+  deals?: { id: string }[];
+};
+
+export type Note = {
+  id: string;
+  org_id: string;
+  contact_id: string | null;
+  deal_id: string | null;
+  user_id: string | null;
+  body: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NoteWithUser = Note & {
+  user: { full_name: string | null; email: string | null } | null;
+};
+
+export type SavedFilter = {
+  id: string;
+  org_id: string;
+  user_id: string | null;
+  entity: 'contacts' | 'deals';
+  name: string;
+  definition: FilterDefinition;
+};
+
+export type FilterOperator =
+  | 'contains' | 'not_contains' | 'eq' | 'neq'
+  | 'gt' | 'gte' | 'lt' | 'lte'
+  | 'is_empty' | 'not_empty'
+  | 'before_days' | 'after_days';
+
+export type FilterRule = {
+  field: string;
+  operator: FilterOperator;
+  value: string;
+};
+
+/** Regeln innerhalb einer Gruppe sind UND-verknuepft, Gruppen untereinander ODER. */
+export type FilterDefinition = { groups: FilterRule[][] };
 
 export type Deal = {
   id: string;
@@ -77,9 +137,10 @@ export type Deal = {
   updated_at: string;
   won_at: string | null;
   lost_at: string | null;
+  last_activity_at?: string | null;
 };
 
-export type DealWithContact = Deal & { contact: Contact | null };
+export type DealWithContact = Deal & { contact: ContactWithPersons | null };
 
 export type Activity = {
   id: string;

@@ -72,18 +72,38 @@ async function seedDemoData(orgId: string, userId: string) {
 
   const contacts = Array.from({ length: 24 }, (_, i) => ({
     org_id: orgId,
-    first_name: FIRST[i % FIRST.length],
-    last_name: LAST[(i * 5) % LAST.length],
-    email: `${FIRST[i % FIRST.length].toLowerCase()}.${LAST[(i * 5) % LAST.length].toLowerCase()}@example.com`,
-    phone: `+49 151 ${String(1000000 + i * 13457).slice(0, 7)}`,
     company: COMPANY[i % COMPANY.length],
+    website: `${COMPANY[i % COMPANY.length].toLowerCase().replace(/[^a-z]+/g, '-')}.example.com`,
+    city: ['Berlin', 'Hamburg', 'München', 'Köln', 'Graz', 'Zürich'][i % 6],
+    postal_code: String(10000 + i * 1234).slice(0, 5),
+    country: i % 7 === 0 ? 'Österreich' : i % 11 === 0 ? 'Schweiz' : 'Deutschland',
     lead_source: LEAD_SOURCES[i % LEAD_SOURCES.length],
+    opener_kuerzel: ['MM', 'AK', 'LS'][i % 3],
     owner_id: userId,
     created_by: userId,
   }));
 
   const { data: insertedContacts } = await supabase.from('contacts').insert(contacts).select('id');
   if (!insertedContacts?.length) return;
+
+  const persons = insertedContacts.flatMap((c, i) => {
+    const extra = i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0;
+    return Array.from({ length: 1 + extra }, (_, j) => {
+      const fi = (i + j * 4) % FIRST.length;
+      const li = (i * 5 + j) % LAST.length;
+      return {
+        org_id: orgId,
+        contact_id: c.id,
+        first_name: FIRST[fi],
+        last_name: LAST[li],
+        email: `${FIRST[fi].toLowerCase()}.${LAST[li].toLowerCase()}@example.com`,
+        phone: `+49 151 ${String(1000000 + i * 13457 + j * 991).slice(0, 7)}`,
+        is_primary: j === 0,
+        position: j,
+      };
+    });
+  });
+  await supabase.from('contact_persons').insert(persons);
 
   const deals = insertedContacts.map((c, i) => {
     const pipeline = pipelines[i % pipelines.length];
