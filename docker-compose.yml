@@ -10,4 +10,4 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "127.0.0.1:3010:3000"   # nur lokal, der Reverse Proxy leitet weiter
+      - "3010:3000"   # im LAN und per Tailscale erreichbar: http://magnetic-nas:3010
