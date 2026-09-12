@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, LayoutList } from 'lucide-react';
 import RecordTable from '@/components/table/RecordTable';
 import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS } from '@/components/table/columns';
 import DetailPanel from '@/components/DetailPanel';
+import PanelConfigurator from '@/components/PanelConfigurator';
 import { Modal } from '@/components/ui';
 import DealForm from '@/components/DealForm';
 import { DEAL_FIELDS } from '@/lib/filters';
@@ -31,8 +32,10 @@ export default function PipelineView({
   initialOpen?: string | null;
 }) {
   const router = useRouter();
-  const [openContact, setOpenContact] = useState<string | null>(initialOpen ?? null);
+  const [open, setOpen] = useState<{ contactId: string; dealId: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [configuring, setConfiguring] = useState(false);
+  const initialContact = initialOpen ?? null;
 
   const tabHref = (id: string | null) => `/pipelines?p=${pipeline.id}${id ? `&s=${id}` : ''}`;
 
@@ -76,13 +79,18 @@ export default function PipelineView({
         filter={filter}
         savedFilters={savedFilters}
         onSaveFilter={(name, def) => saveFilter('deals', name, def)}
-        onRowClick={(row) => row.contact_id && setOpenContact(row.contact_id)}
+        onRowClick={(row) => row.contact_id && setOpen({ contactId: row.contact_id, dealId: row.id })}
         activeId={null}
         emptyText="Keine Deals in dieser Phase."
         toolbarRight={
-          <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-            <Plus size={16} /> Deal hinzufügen
-          </button>
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setConfiguring(true)}>
+              <LayoutList size={15} /> Deal-Ansicht
+            </button>
+            <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
+              <Plus size={16} /> Deal hinzufügen
+            </button>
+          </>
         }
       />
 
@@ -98,11 +106,14 @@ export default function PipelineView({
         />
       </Modal>
 
-      {openContact && (
+      {configuring && <PanelConfigurator onClose={() => setConfiguring(false)} />}
+
+      {(open || initialContact) && (
         <DetailPanel
-          key={openContact}
-          contactId={openContact}
-          onClose={() => { setOpenContact(null); router.refresh(); }}
+          key={open?.dealId ?? initialContact}
+          contactId={open?.contactId ?? initialContact!}
+          dealId={open?.dealId ?? null}
+          onClose={() => { setOpen(null); router.replace(`/pipelines?p=${pipeline.id}${stageId ? `&s=${stageId}` : ''}`); router.refresh(); }}
           onDeleted={() => router.refresh()}
         />
       )}

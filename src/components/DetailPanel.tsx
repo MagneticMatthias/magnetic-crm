@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
-  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus,
+  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree,
 } from 'lucide-react';
 import {
   loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
   setPrimaryPerson, setDealStage, createDealForContact, createNote, togglePinNote,
-  deleteNote, deleteContactRecord, type ContactDetail,
+  deleteNote, deleteContactRecord, updateDealFields, updateDealCustom, type ContactDetail,
 } from '@/app/actions/records';
+import { PANEL_CARDS, DEFAULT_PANEL_LAYOUT, SETTER_FIELDS, type PanelCardKey } from '@/lib/panel-cards';
+import { Badge } from '@/components/Badge';
 import { logActivity, createTask } from '@/app/actions/crm';
 import { sendDealEmail, fillTemplate } from '@/app/actions/email';
 import EmailComposer from '@/components/EmailComposer';
@@ -20,7 +22,7 @@ import TaskComposer from '@/components/TaskComposer';
 import NoteEditor from '@/components/NoteEditor';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
-import { dateTime, initials, primaryPerson } from '@/lib/format';
+import { dateTime, dateOnly, eur, initials, personName, primaryPerson } from '@/lib/format';
 import type { ContactPerson } from '@/lib/types';
 
 type Tab = 'info' | 'activities' | 'notes';
@@ -160,12 +162,106 @@ function PhoneField({
   );
 }
 
+
+/** Kompakte Ansprechpartner-Zeile mit aufklappbarer Bearbeitung. */
+function PersonRow({
+  person, run,
+}: { person: ContactPerson; run: (fn: () => Promise<unknown>) => void }) {
+  const [open, setOpen] = useState(!personName(person) && !person.email);
+  const [menu, setMenu] = useState(false);
+  const name = personName(person) || 'Neue Person';
+
+  return (
+    <div className="rounded-xl border border-line">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[15px] font-semibold">{name}</span>
+            {person.is_primary && (
+              <span className="chip bg-win/15 text-win"><UserCheck size={12} /> Primärer Ansprechpartner</span>
+            )}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] text-muted">
+            {person.email && <span className="flex items-center gap-1.5"><Mail size={13} /> {person.email}</span>}
+            {person.phone && <span className="flex items-center gap-1.5"><Phone size={13} /> {person.phone}</span>}
+            {!person.email && !person.phone && <span>Noch keine Kontaktdaten</span>}
+          </div>
+        </div>
+
+        <a href={person.phone ? `tel:${person.phone}` : undefined}
+           className={`grid h-9 w-9 place-items-center rounded-lg border border-line hover:bg-surface-2 ${person.phone ? '' : 'pointer-events-none opacity-40'}`}
+           aria-label="Anrufen">
+          <Phone size={15} />
+        </a>
+
+        <div className="relative">
+          <button type="button" onClick={() => setMenu((m) => !m)}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-line hover:bg-surface-2" aria-label="Mehr">
+            <MoreVertical size={15} />
+          </button>
+          {menu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
+              <div className="card absolute right-0 z-20 mt-1.5 w-52 p-1.5 shadow-xl">
+                {!person.is_primary && (
+                  <button type="button" className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2"
+                          onClick={() => { setMenu(false); run(() => setPrimaryPerson(person.id)); }}>
+                    <Star size={14} /> Als primär setzen
+                  </button>
+                )}
+                {person.email && (
+                  <a href={`mailto:${person.email}`} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2">
+                    <Mail size={14} /> E-Mail schreiben
+                  </a>
+                )}
+                <button type="button" className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-lose hover:bg-lose/10"
+                        onClick={() => { setMenu(false); run(() => deletePerson(person.id)); }}>
+                  <Trash2 size={14} /> Entfernen
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button type="button" onClick={() => setOpen((o) => !o)}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-line hover:bg-surface-2"
+                aria-label={open ? 'Einklappen' : 'Bearbeiten'}>
+          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+      </div>
+
+      {open && (
+        <div className="grid gap-4 border-t border-line px-4 py-4 sm:grid-cols-2">
+          <Field label="Vorname" value={person.first_name}
+                 onSave={(v) => run(() => updatePerson(person.id, { first_name: v }))} />
+          <Field label="Nachname" value={person.last_name}
+                 onSave={(v) => run(() => updatePerson(person.id, { last_name: v }))} />
+          <Field label="E-Mail" required type="email" value={person.email}
+                 onSave={(v) => run(() => updatePerson(person.id, { email: v }))}
+                 trailing={
+                   <a href={person.email ? `mailto:${person.email}` : undefined}
+                      className={`btn-ghost rounded-l-none border-l-0 !px-3 ${person.email ? '' : 'pointer-events-none opacity-50'}`}
+                      aria-label="E-Mail schreiben">
+                     <Mail size={15} />
+                   </a>
+                 } />
+          <PhoneField value={person.phone} onSave={(v) => run(() => updatePerson(person.id, { phone: v }))} />
+          <Field label="Position" value={person.job_title}
+                 onSave={(v) => run(() => updatePerson(person.id, { job_title: v }))} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------ Panel ------------------------------- */
 
 export default function DetailPanel({
-  contactId, onClose, onDeleted, initialTab = 'info',
+  contactId, dealId = null, onClose, onDeleted, initialTab = 'info',
 }: {
   contactId: string;
+  /** Deal-Fokus: Titel und Karten beziehen sich auf diesen Deal. */
+  dealId?: string | null;
   onClose: () => void;
   onDeleted?: () => void;
   initialTab?: Tab;
@@ -177,20 +273,20 @@ export default function DetailPanel({
   const [, startTransition] = useTransition();
 
   const reload = useCallback(async () => {
-    const d = await loadContactDetail(contactId);
+    const d = await loadContactDetail(contactId, dealId);
     setData(d);
     setLoading(false);
-  }, [contactId]);
+  }, [contactId, dealId]);
 
   useEffect(() => {
     let cancelled = false;
-    loadContactDetail(contactId).then((d) => {
+    loadContactDetail(contactId, dealId).then((d) => {
       if (cancelled) return;
       setData(d);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [contactId]);
+  }, [contactId, dealId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -203,8 +299,13 @@ export default function DetailPanel({
 
   const contact = data?.contact;
   const primary = primaryPerson(contact?.persons);
-  const title = contact?.company || [primary?.first_name, primary?.last_name].filter(Boolean).join(' ') || 'Kontakt';
-  const mainDeal = data?.deals?.find((d) => d.status === 'offen') ?? data?.deals?.[0] ?? null;
+  const mainDeal =
+    (dealId ? data?.deals?.find((d) => d.id === dealId) : null)
+    ?? data?.deals?.find((d) => d.status === 'offen') ?? data?.deals?.[0] ?? null;
+  const title = dealId && mainDeal
+    ? mainDeal.title
+    : contact?.company || personName(primary) || 'Kontakt';
+  const layout: PanelCardKey[] = (data?.layout as PanelCardKey[] | null) ?? DEFAULT_PANEL_LAYOUT;
   const stagesFor = (pipelineId: string | null | undefined) =>
     (data?.stages ?? []).filter((s) => s.pipeline_id === pipelineId);
 
@@ -301,150 +402,195 @@ export default function DetailPanel({
             <p className="py-10 text-center text-sm text-muted">Laden …</p>
           ) : tab === 'info' ? (
             <>
-              <Section
-                title="Deal-Status"
-                action={mainDeal ? null : (
-                  data?.stages.length ? (
-                    <select
-                      className="input !w-auto !py-1.5 text-[13px]"
-                      defaultValue=""
-                      onChange={(e) => e.target.value && run(() => createDealForContact(contactId, e.target.value))}
-                    >
-                      <option value="">+ Deal anlegen in …</option>
-                      {data.pipelines.map((p) => (
-                        <optgroup key={p.id} label={p.name}>
-                          {stagesFor(p.id).filter((s) => !s.is_won && !s.is_lost).map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  ) : null
-                )}
-              >
-                {mainDeal ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <SelectField
-                      label="Pipeline" required
-                      value={mainDeal.pipeline_id}
-                      options={(data?.pipelines ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                      onSave={(pipelineId) => {
-                        const first = stagesFor(pipelineId)[0];
-                        if (first) run(() => setDealStage(mainDeal.id, first.id));
-                      }}
-                    />
-                    <SelectField
-                      label="Deal-Phase" required
-                      value={mainDeal.stage_id}
-                      options={stagesFor(mainDeal.pipeline_id).map((s) => ({ value: s.id, label: s.name }))}
-                      onSave={(stageId) => run(() => setDealStage(mainDeal.id, stageId))}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted">Noch kein Deal – oben rechts eine Phase wählen.</p>
-                )}
+              {layout.map((key) => {
+                const def = PANEL_CARDS.find((c) => c.key === key);
+                if (!def) return null;
 
-                {data && data.deals.length > 1 && (
-                  <p className="mt-3 text-xs text-muted">
-                    {data.deals.length} Deals insgesamt · {data.deals.filter((d) => d.status === 'gewonnen').length} gewonnen
-                  </p>
-                )}
-              </Section>
-
-              <Section
-                title="Ansprechpartner"
-                action={
-                  <button type="button" className="btn-ghost !py-1.5 text-[13px]"
-                          onClick={() => run(() => addPerson(contactId))}>
-                    <UserPlus size={14} /> Neu hinzufügen
-                  </button>
-                }
-              >
-                <div className="space-y-5">
-                  {contact.persons.length === 0 && (
-                    <p className="text-sm text-muted">Noch kein Ansprechpartner hinterlegt.</p>
-                  )}
-                  {contact.persons.map((p: ContactPerson, i) => (
-                    <div key={p.id} className={i > 0 ? 'border-t border-line pt-5' : ''}>
-                      {contact.persons.length > 1 && (
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="chip bg-surface-2 text-muted">
-                            {p.is_primary ? <><Star size={11} className="text-warn" /> Hauptansprechpartner</> : `Person ${i + 1}`}
-                          </span>
-                          <div className="flex gap-1">
-                            {!p.is_primary && (
-                              <button type="button" className="btn-ghost !border-0 !py-1 text-xs"
-                                      onClick={() => run(() => setPrimaryPerson(p.id))}>
-                                Als Haupt setzen
-                              </button>
-                            )}
-                            <button type="button" className="grid h-7 w-7 place-items-center rounded-md text-muted hover:text-lose"
-                                    onClick={() => run(() => deletePerson(p.id))} aria-label="Person entfernen">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Vorname" value={p.first_name}
-                               onSave={(v) => run(() => updatePerson(p.id, { first_name: v }))} />
-                        <Field label="Nachname" value={p.last_name}
-                               onSave={(v) => run(() => updatePerson(p.id, { last_name: v }))} />
-                        <Field
-                          label="E-Mail" required type="email" value={p.email}
-                          onSave={(v) => run(() => updatePerson(p.id, { email: v }))}
-                          trailing={
-                            <a href={p.email ? `mailto:${p.email}` : undefined}
-                               className={`btn-ghost rounded-l-none border-l-0 !px-3 ${p.email ? '' : 'pointer-events-none opacity-50'}`}
-                               aria-label="E-Mail schreiben">
-                              <Mail size={15} />
-                            </a>
-                          }
-                        />
-                        <PhoneField value={p.phone} onSave={(v) => run(() => updatePerson(p.id, { phone: v }))} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-
-              <Section title="Stammdaten des Kontakts">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Firmenname" value={contact.company}
-                         onSave={(v) => run(() => updateContactFields(contactId, { company: v }))} />
-                  <Field
-                    label="Website" value={contact.website}
-                    onSave={(v) => run(() => updateContactFields(contactId, { website: v }))}
-                    trailing={
-                      <a href={contact.website ? (contact.website.startsWith('http') ? contact.website : `https://${contact.website}`) : undefined}
-                         target="_blank" rel="noreferrer noopener"
-                         className={`btn-ghost rounded-l-none border-l-0 !px-3 ${contact.website ? '' : 'pointer-events-none opacity-50'}`}
-                         aria-label="Website öffnen">
-                        <ExternalLink size={15} />
-                      </a>
+                if (key === 'persons') return (
+                  <Section key={key} title="Ansprechpartner"
+                    action={
+                      <button type="button" className="btn-ghost !py-1.5 text-[13px]"
+                              onClick={() => run(() => addPerson(contactId))}>
+                        <UserPlus size={14} /> Neu hinzufügen
+                      </button>
                     }
-                  />
-                  <Field label="Postleitzahl" value={contact.postal_code}
-                         onSave={(v) => run(() => updateContactFields(contactId, { postal_code: v }))} />
-                  <Field label="Stadt" value={contact.city}
-                         onSave={(v) => run(() => updateContactFields(contactId, { city: v }))} />
-                  <SelectField label="Land" value={contact.country}
-                               options={COUNTRIES.map((c) => ({ value: c, label: c }))} placeholder="–"
-                               onSave={(v) => run(() => updateContactFields(contactId, { country: v }))} />
-                  <Field label="Leadherkunft" value={contact.lead_source} list="lead-sources-panel"
-                         onSave={(v) => run(() => updateContactFields(contactId, { lead_source: v }))} />
-                  <datalist id="lead-sources-panel">
-                    {LEAD_SOURCES.map((s) => <option key={s} value={s} />)}
-                  </datalist>
-                  <Field label="Opener-Kürzel" value={contact.opener_kuerzel} placeholder="z. B. MM"
-                         onSave={(v) => run(() => updateContactFields(contactId, { opener_kuerzel: v }))} />
-                </div>
-              </Section>
+                  >
+                    <div className="space-y-2.5">
+                      {contact.persons.length === 0 && (
+                        <p className="text-sm text-muted">Noch kein Ansprechpartner hinterlegt.</p>
+                      )}
+                      {contact.persons.map((p: ContactPerson) => (
+                        <PersonRow key={p.id} person={p} run={run} />
+                      ))}
+                    </div>
+                  </Section>
+                );
 
-              <Section title="Aufgaben" defaultOpen={false}>
-                <TaskComposer action={createTask} contactId={contactId} />
-                <div className="mt-3"><TaskList tasks={data?.tasks ?? []} /></div>
-              </Section>
+                if (key === 'deal_name') return mainDeal ? (
+                  <Section key={key} title="Deal-Name">
+                    <Field label="Name" required value={mainDeal.title}
+                           onSave={(v) => run(() => updateDealFields(mainDeal.id, { title: v }))} />
+                  </Section>
+                ) : null;
+
+                if (key === 'deal_status') return (
+                  <Section key={key} title="Deal-Status"
+                    action={mainDeal ? null : (
+                      data?.stages.length ? (
+                        <select className="input !w-auto !py-1.5 text-[13px]" defaultValue=""
+                                onChange={(e) => e.target.value && run(() => createDealForContact(contactId, e.target.value))}>
+                          <option value="">+ Deal anlegen in …</option>
+                          {data.pipelines.map((p) => (
+                            <optgroup key={p.id} label={p.name}>
+                              {stagesFor(p.id).filter((s) => !s.is_won && !s.is_lost).map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      ) : null
+                    )}
+                  >
+                    {mainDeal ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <SelectField label="Pipeline" required value={mainDeal.pipeline_id}
+                          options={(data?.pipelines ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                          onSave={(pipelineId) => {
+                            const first = stagesFor(pipelineId)[0];
+                            if (first) run(() => setDealStage(mainDeal.id, first.id));
+                          }} />
+                        <SelectField label="Deal-Phase" required value={mainDeal.stage_id}
+                          options={stagesFor(mainDeal.pipeline_id).map((s) => ({ value: s.id, label: s.name }))}
+                          onSave={(stageId) => run(() => setDealStage(mainDeal.id, stageId))} />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted">Noch kein Deal – oben rechts eine Phase wählen.</p>
+                    )}
+                  </Section>
+                );
+
+                if (key === 'marketing') return mainDeal ? (
+                  <Section key={key} title="Marketing-Informationen" defaultOpen={false}>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const).map((k) => (
+                        <Field key={k} label={k} value={mainDeal[k] ?? null}
+                               onSave={(v) => run(() => updateDealFields(mainDeal.id, { [k]: v }))} />
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-muted">Werden von Lead-Formularen automatisch aus der URL übernommen.</p>
+                  </Section>
+                ) : null;
+
+                if (key === 'contact_master') return (
+                  <Section key={key} title="Stammdaten des Kontakts">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Firmenname" value={contact.company}
+                             onSave={(v) => run(() => updateContactFields(contactId, { company: v }))} />
+                      <Field label="Website" value={contact.website}
+                        onSave={(v) => run(() => updateContactFields(contactId, { website: v }))}
+                        trailing={
+                          <a href={contact.website ? (contact.website.startsWith('http') ? contact.website : `https://${contact.website}`) : undefined}
+                             target="_blank" rel="noreferrer noopener"
+                             className={`btn-ghost rounded-l-none border-l-0 !px-3 ${contact.website ? '' : 'pointer-events-none opacity-50'}`}
+                             aria-label="Website öffnen">
+                            <ExternalLink size={15} />
+                          </a>
+                        } />
+                      <Field label="Postleitzahl" value={contact.postal_code}
+                             onSave={(v) => run(() => updateContactFields(contactId, { postal_code: v }))} />
+                      <Field label="Stadt" value={contact.city}
+                             onSave={(v) => run(() => updateContactFields(contactId, { city: v }))} />
+                      <SelectField label="Land" value={contact.country}
+                                   options={COUNTRIES.map((c) => ({ value: c, label: c }))} placeholder="–"
+                                   onSave={(v) => run(() => updateContactFields(contactId, { country: v }))} />
+                      <Field label="Leadherkunft" value={contact.lead_source} list="lead-sources-panel"
+                             onSave={(v) => run(() => updateContactFields(contactId, { lead_source: v }))} />
+                      <datalist id="lead-sources-panel">
+                        {LEAD_SOURCES.map((s) => <option key={s} value={s} />)}
+                      </datalist>
+                      <Field label="Opener-Kürzel" value={contact.opener_kuerzel} placeholder="z. B. MM"
+                             onSave={(v) => run(() => updateContactFields(contactId, { opener_kuerzel: v }))} />
+                    </div>
+                  </Section>
+                );
+
+                if (key === 'deal_props') return mainDeal ? (
+                  <Section key={key} title="Deal-Eigenschaften">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Auftrags-Volumen (€)" value={String(mainDeal.value ?? 0)}
+                             onSave={(v) => run(() => updateDealFields(mainDeal.id, { value: v }))} />
+                      <Field label="Abschluss-Datum" type="date" value={mainDeal.expected_close_date}
+                             onSave={(v) => run(() => updateDealFields(mainDeal.id, { expected_close_date: v }))} />
+                      <SelectField label="Setter" value={mainDeal.setter_id} placeholder="–"
+                                   options={(data?.team ?? []).map((t) => ({ value: t.id, label: t.full_name || t.email || '–' }))}
+                                   onSave={(v) => run(() => updateDealFields(mainDeal.id, { setter_id: v }))} />
+                      <SelectField label="Closer" value={mainDeal.closer_id} placeholder="–"
+                                   options={(data?.team ?? []).map((t) => ({ value: t.id, label: t.full_name || t.email || '–' }))}
+                                   onSave={(v) => run(() => updateDealFields(mainDeal.id, { closer_id: v }))} />
+                      <Field label="Leadherkunft" value={mainDeal.source} list="lead-sources-panel"
+                             onSave={(v) => run(() => updateDealFields(mainDeal.id, { source: v }))} />
+                      <Field label="Nächster Schritt" value={mainDeal.next_step}
+                             onSave={(v) => run(() => updateDealFields(mainDeal.id, { next_step: v }))} />
+                    </div>
+                    <p className="mt-3 text-xs text-muted">
+                      Angelegt {dateOnly(mainDeal.created_at)} · Status {mainDeal.status}
+                      {mainDeal.won_at ? ` · gewonnen ${dateOnly(mainDeal.won_at)}` : ''}
+                    </p>
+                  </Section>
+                ) : null;
+
+                if (key === 'setter_info') return mainDeal ? (
+                  <Section key={key} title="Setter-Informationen" defaultOpen={false}>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {SETTER_FIELDS.map((f) => (
+                        <Field key={f.key} label={f.label} placeholder={f.placeholder}
+                               value={mainDeal.custom?.[f.key] ?? null}
+                               onSave={(v) => run(() => updateDealCustom(mainDeal.id, f.key, v))} />
+                      ))}
+                    </div>
+                  </Section>
+                ) : null;
+
+                if (key === 'linked_contact') return (
+                  <Section key={key} title="Verknüpfter Kontakt" defaultOpen={false}>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-line p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{contact.company || personName(primary) || 'Kontakt'}</p>
+                        <p className="text-xs text-muted">
+                          {contact.persons.length} Ansprechpartner · {data?.deals.length ?? 0} Deals
+                        </p>
+                      </div>
+                      <a href={`/kontakte?open=${contactId}`} className="btn-ghost !py-1.5 text-[13px]">
+                        <ListTree size={14} /> Öffnen
+                      </a>
+                    </div>
+                    {data && data.deals.length > 0 && (
+                      <ul className="mt-3 space-y-1.5">
+                        {data.deals.map((d) => (
+                          <li key={d.id} className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm ${
+                            d.id === mainDeal?.id ? 'bg-brand-soft' : 'bg-surface-2/60'
+                          }`}>
+                            <span className="min-w-0 truncate">{d.title}</span>
+                            <span className="flex shrink-0 items-center gap-2">
+                              {d.stage && <Badge color={d.stage.color}>{d.stage.name}</Badge>}
+                              <span className="tabular-nums text-muted">{eur(d.value)}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Section>
+                );
+
+                if (key === 'tasks') return (
+                  <Section key={key} title="Aufgaben" defaultOpen={false}>
+                    <TaskComposer action={createTask} contactId={contactId} />
+                    <div className="mt-3"><TaskList tasks={data?.tasks ?? []} /></div>
+                  </Section>
+                );
+
+                return null;
+              })}
             </>
           ) : tab === 'activities' ? (
             <>

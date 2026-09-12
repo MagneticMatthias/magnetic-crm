@@ -138,6 +138,12 @@ export type Deal = {
   won_at: string | null;
   lost_at: string | null;
   last_activity_at?: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  custom?: Record<string, string | null>;
 };
 
 export type DealWithContact = Deal & { contact: ContactWithPersons | null };

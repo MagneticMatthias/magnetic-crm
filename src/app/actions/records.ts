@@ -27,9 +27,12 @@ export type ContactDetail = {
   tasks: Task[];
   templates: EmailTemplate[];
   smtpReady: boolean;
+  team: { id: string; full_name: string | null; email: string | null }[];
+  focusDealId: string | null;
+  layout: string[] | null;
 };
 
-export async function loadContactDetail(contactId: string): Promise<ContactDetail | null> {
+export async function loadContactDetail(contactId: string, dealId?: string | null): Promise<ContactDetail | null> {
   const { supabase, orgId } = await ctx();
 
   const { data: contact } = await supabase
@@ -39,7 +42,7 @@ export async function loadContactDetail(contactId: string): Promise<ContactDetai
     .maybeSingle();
   if (!contact) return null;
 
-  const [{ data: deals }, { data: pipelines }, { data: stages }, { data: activities }, { data: notes }, { data: tasks }, { data: templates }] =
+  const [{ data: deals }, { data: pipelines }, { data: stages }, { data: activities }, { data: notes }, { data: tasks }, { data: templates }, { data: team }, { data: layout }] =
     await Promise.all([
       supabase.from('deals')
         .select('*, pipeline:pipelines(name), stage:pipeline_stages(name, color)')
@@ -53,6 +56,8 @@ export async function loadContactDetail(contactId: string): Promise<ContactDetai
         .order('created_at', { ascending: false }),
       supabase.from('tasks').select('*').eq('contact_id', contactId).order('done').order('due_at').limit(30),
       supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
+      supabase.from('profiles').select('id, full_name, email').eq('org_id', orgId).eq('active', true),
+      supabase.from('column_layouts').select('columns').eq('view_key', 'deal_panel').maybeSingle(),
     ]);
 
   const c = contact as ContactWithPersons;
@@ -68,6 +73,9 @@ export async function loadContactDetail(contactId: string): Promise<ContactDetai
     tasks: (tasks ?? []) as Task[],
     templates: (templates ?? []) as EmailTemplate[],
     smtpReady: smtpConfigured(),
+    team: (team ?? []) as ContactDetail['team'],
+    focusDealId: dealId ?? null,
+    layout: Array.isArray(layout?.columns) ? (layout.columns as string[]) : null,
   };
 }
 
@@ -198,6 +206,44 @@ export async function createDealForContact(contactId: string, stageId: string) {
   });
   if (error) throw new Error(error.message);
   refresh();
+}
+
+const DEAL_FIELDS = new Set([
+  'title', 'value', 'expected_close_date', 'next_step', 'source', 'setter_id', 'closer_id', 'owner_id',
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'lost_reason',
+]);
+
+export async function updateDealFields(dealId: string, patch: Record<string, string | null>) {
+  const { supabase } = await ctx();
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (!DEAL_FIELDS.has(k)) continue;
+    const t = v?.trim() ? v.trim() : null;
+    clean[k] = k === 'value' ? Number(String(t ?? '0').replace(/\./g, '').replace(',', '.')) || 0 : t;
+  }
+  if (Object.keys(clean).length === 0) return;
+  const { error } = await supabase.from('deals').update(clean).eq('id', dealId);
+  if (error) throw new Error(error.message);
+  refresh();
+}
+
+/** Setter-Qualifizierung liegt als freie Schluessel in deals.custom. */
+export async function updateDealCustom(dealId: string, key: string, value: string | null) {
+  const { supabase } = await ctx();
+  const { data } = await supabase.from('deals').select('custom').eq('id', dealId).single();
+  const custom = { ...((data?.custom as Record<string, unknown>) ?? {}), [key]: value?.trim() || null };
+  const { error } = await supabase.from('deals').update({ custom }).eq('id', dealId);
+  if (error) throw new Error(error.message);
+  refresh();
+}
+
+export async function savePanelLayout(cards: string[]) {
+  const { supabase, orgId, profile } = await ctx();
+  const { error } = await supabase.from('column_layouts').upsert(
+    { org_id: orgId, user_id: profile.id, view_key: 'deal_panel', columns: cards },
+    { onConflict: 'user_id,view_key' },
+  );
+  if (error) throw new Error(error.message);
 }
 
 /* -------------------------------- Notizen ----------------------------- */

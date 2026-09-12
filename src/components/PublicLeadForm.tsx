@@ -28,6 +28,11 @@ export default function PublicLeadForm({
         const fd = new FormData(e.currentTarget);
         const supabase = createClient();
 
+        const utm: Record<string, string> = {};
+        new URLSearchParams(window.location.search).forEach((v, k) => {
+          if (k.startsWith('utm_')) utm[k] = v.slice(0, 200);
+        });
+
         const { error } = await supabase.rpc('submit_lead_form', {
           p_slug: slug,
           p_first_name: String(fd.get('first_name') ?? ''),
@@ -36,6 +41,7 @@ export default function PublicLeadForm({
           p_phone: String(fd.get('phone') ?? ''),
           p_company: String(fd.get('company') ?? ''),
           p_message: String(fd.get('message') ?? ''),
+          p_utm: utm,
         });
 
         if (error) {

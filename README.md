@@ -14,7 +14,8 @@ Datenmodell, eigene Oberfläche, eigene Texte.
 | **Pipeline-Ansicht** | Phasen als Tabs mit Zählern, darunter die Deal-Tabelle; Phase direkt im Panel wechseln |
 | **Kontakte** | Kontakt = Firma mit beliebig vielen Ansprechpartnern (Hauptansprechpartner markiert), Website, Adresse, Leadherkunft, Opener-Kürzel; Tabelle mit Spaltenwahl und Mehrfachauswahl |
 | **Filter** | Filter-Builder mit Feld / Bedingung / Wert, ODER-Gruppen, Datumsbedingungen („Zuletzt kontaktiert ist vor X Tagen"), speicherbare Filter |
-| **Detail-Panel** | Slide-over mit Tabs Kontakt-Info (Deal-Status, Ansprechpartner, Stammdaten – Felder speichern beim Verlassen), Aktivitäten und Notizen (Rich-Text, anheften) |
+| **Detail-Panel** | Slide-over mit Tabs Kontakt-Info, Aktivitäten und Notizen (Rich-Text, anheften). Karten: Ansprechpartner (kompakte Zeilen, primärer Ansprechpartner, aufklappbare Bearbeitung), Deal-Name, Deal-Status, Stammdaten, Deal-Eigenschaften, Marketing-Informationen (UTM), Setter-Informationen, verknüpfter Kontakt, Aufgaben – Felder speichern beim Verlassen |
+| **Deal-Ansicht** | Konfigurator je Nutzer: Karten per Drag & Drop sortieren, ein- und ausblenden |
 | **Deals** | Wert, Phase, Setter, Closer, Leadquelle, erwarteter Abschluss, nächster Schritt, Phasen-Historie |
 | **Lead Management** | Strukturiertes Call-Logging (Opening / Setting / Closing / Follow-up) mit Ergebnis, Dauer, Notiz – kein Freitext-Chaos |
 | **Power Dialer** | Arbeitet eine Phase Deal für Deal ab: anrufen, Timer, Ergebnis per Klick, Deal automatisch weiterschieben, Wiedervorlage anlegen, automatisch zum nächsten |
@@ -33,6 +34,7 @@ Datenmodell, eigene Oberfläche, eigene Texte.
    - `supabase/schema.sql`
    - `supabase/02_features.sql`
    - `supabase/03_ui_rework.sql`
+   - `supabase/04_deal_panel.sql`
 3. `.env.example` nach `.env.local` kopieren und die Supabase-Werte eintragen.
 4. Installieren und starten:
 
@@ -82,6 +84,7 @@ supabase/
   schema.sql          Kerntabellen, Trigger, RLS
   02_features.sql     Dialer, E-Mail, Formulare, Ziele, Realtime
   03_ui_rework.sql    Ansprechpartner, Notizen, gespeicherte Filter
+  04_deal_panel.sql   UTM-Felder, Lead-Formular mit UTM, Panel-Karten
 ```
 
 **Sicherheit:** Jede Tabelle hat Row Level Security auf `org_id`. Anonyme Besucher
