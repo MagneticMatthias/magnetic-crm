@@ -4,8 +4,22 @@ import { createOrganization } from '@/app/actions/org';
 
 export default async function OnboardingPage() {
   const profile = await getProfileOrNull();
-  if (!profile) redirect('/login');
-  if (profile.org_id) redirect('/dashboard');
+  if (profile?.org_id) redirect('/dashboard');
+
+  if (!profile) {
+    return (
+      <div className="min-h-dvh grid place-items-center px-4">
+        <div className="card max-w-md p-6">
+          <h1 className="text-lg font-semibold">Profil konnte nicht angelegt werden</h1>
+          <p className="mt-2 text-sm text-muted">
+            Bitte pruefe, ob die Datei <code>schema.sql</code> vollstaendig im Supabase
+            SQL-Editor ausgefuehrt wurde (Tabelle <code>profiles</code> und die RLS-Policy
+            <code>profiles_insert</code>). Danach diese Seite neu laden.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh grid place-items-center px-4 py-10">

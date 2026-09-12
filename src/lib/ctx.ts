@@ -2,6 +2,7 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 import { createClient } from './supabase/server';
 import type { Profile } from './types';
+import { ensureProfile } from './profile';
 
 /** Supabase-Client + Profil des eingeloggten Nutzers. Fuer Server Actions und Loader. */
 export async function ctx() {
@@ -9,8 +10,7 @@ export async function ctx() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).maybeSingle();
+  const profile = await ensureProfile(supabase, user);
   if (!profile?.org_id) redirect('/onboarding');
 
   return { supabase, profile: profile as Profile, orgId: profile.org_id as string };

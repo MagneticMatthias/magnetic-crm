@@ -22,8 +22,13 @@ export async function createOrganization(formData: FormData) {
 
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ org_id: org.id, role: 'admin', email: user.email })
-    .eq('id', user.id);
+    .upsert({
+      id: user.id,
+      org_id: org.id,
+      role: 'admin',
+      email: user.email,
+      full_name: (user.user_metadata?.full_name as string | undefined) ?? user.email,
+    }, { onConflict: 'id' });
   if (profileError) throw new Error(profileError.message);
 
   for (const [i, tpl] of PIPELINE_TEMPLATES.entries()) {
