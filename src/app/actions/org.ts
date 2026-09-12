@@ -16,8 +16,10 @@ export async function createOrganization(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: org, error: orgError } = await supabase
-    .from('organizations').insert({ name }).select('id').single();
+  // ID vorab erzeugen: ein INSERT ... RETURNING wuerde an RLS scheitern,
+  // weil das Profil in diesem Moment noch keiner Organisation gehoert.
+  const org = { id: crypto.randomUUID() };
+  const { error: orgError } = await supabase.from('organizations').insert({ id: org.id, name });
   if (orgError) throw new Error(orgError.message);
 
   const { error: profileError } = await supabase
