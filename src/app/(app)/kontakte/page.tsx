@@ -36,9 +36,9 @@ export default async function ContactsPage({
   rows = applyFilter(rows, def, CONTACT_FIELDS);
 
   return (
-    <div className="p-5 sm:p-7">
-      <div className="mb-5 flex items-baseline gap-3">
-        <h1 className="text-2xl font-semibold">Kontakte</h1>
+    <div className="p-3 sm:p-7">
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:mb-5">
+        <h1 className="text-xl font-semibold sm:text-2xl">Kontakte</h1>
         <span className="text-sm text-muted">{rows.length} Datensätze</span>
       </div>
 

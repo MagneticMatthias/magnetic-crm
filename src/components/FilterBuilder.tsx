@@ -36,7 +36,7 @@ function PropertyPicker({
   }, [fields, query]);
 
   return (
-    <div className="relative grid grid-cols-[minmax(0,240px)_1fr_auto] items-center gap-2">
+    <div className="relative grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,240px)_1fr_auto]">
       <div className="relative">
         <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
         <input
@@ -56,12 +56,12 @@ function PropertyPicker({
         Wähle eine Eigenschaft zum Filtern
       </button>
 
-      <span className="w-7" />
+      <span className="hidden w-7 sm:block" />
 
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="card absolute left-0 top-full z-20 mt-1 max-h-72 w-[340px] overflow-y-auto p-1.5 shadow-xl">
+          <div className="card absolute left-0 top-full z-20 mt-1 max-h-72 w-full overflow-y-auto p-1.5 shadow-xl sm:w-[340px]">
             {groups.length === 0 && <p className="px-2.5 py-3 text-xs text-muted">Keine Eigenschaft gefunden.</p>}
             {groups.map(([group, list]) => (
               <div key={group} className="mb-1 last:mb-0">
@@ -104,7 +104,7 @@ function RuleRow({
   const isDateSpan = rule.operator === 'before_days' || rule.operator === 'after_days';
 
   return (
-    <div className="grid grid-cols-[minmax(0,240px)_1fr_auto] items-center gap-2">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-2 sm:grid-cols-[minmax(0,240px)_1fr_auto]">
       <div className="input flex !cursor-default items-center gap-2 !py-1.5 text-[13px]">
         <FieldIcon name={field.icon} />
         <select
@@ -119,7 +119,7 @@ function RuleRow({
         </select>
       </div>
 
-      <div className={`grid gap-2 ${isDateSpan ? 'grid-cols-[1fr_auto_88px]' : needsValue ? 'grid-cols-[150px_1fr]' : 'grid-cols-1'}`}>
+      <div className={`col-span-2 grid gap-2 sm:col-span-1 ${isDateSpan ? 'grid-cols-[1fr_auto_88px]' : needsValue ? 'grid-cols-[minmax(0,150px)_1fr]' : 'grid-cols-1'}`}>
         <select
           className="input !py-1.5 text-[13px]"
           value={rule.operator}
@@ -154,7 +154,7 @@ function RuleRow({
       </div>
 
       <button type="button" onClick={onRemove}
-              className="grid h-7 w-7 place-items-center rounded-md text-lose hover:bg-lose/10"
+              className="row-start-1 col-start-2 grid h-7 w-7 place-items-center justify-self-end rounded-md text-lose hover:bg-lose/10 sm:col-start-auto sm:row-start-auto"
               aria-label="Bedingung entfernen">
         <X size={15} />
       </button>
@@ -183,7 +183,7 @@ export default function FilterBuilder({
     setDef((d) => ({ groups: d.groups.map((g, i) => (i === groupIndex ? rules : g)) }));
 
   return (
-    <div className="card w-[min(760px,calc(100vw-2rem))] p-5 shadow-2xl">
+    <div className="card w-[min(760px,calc(100vw-2rem))] p-4 shadow-2xl sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold">
           <FilterIcon size={17} className="text-brand" /> Filter
@@ -224,7 +224,7 @@ export default function FilterBuilder({
         </div>
       )}
 
-      <div className="mb-2 grid grid-cols-[minmax(0,240px)_1fr_auto] gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <div className="mb-2 hidden grid-cols-[minmax(0,240px)_1fr_auto] gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted sm:grid">
         <span>Feld</span>
         <span>Bedingung</span>
         <span className="w-7" />
@@ -271,7 +271,7 @@ export default function FilterBuilder({
         <CopyPlus size={14} /> Filter-Gruppe hinzufügen
       </button>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           className="btn inline-flex border border-lose/40 text-lose hover:bg-lose/10"

@@ -36,7 +36,7 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="card">
-      <div className="flex items-center justify-between gap-3 px-5 py-4">
+      <div className="flex items-center justify-between gap-2 px-4 py-3.5 sm:px-5 sm:py-4">
         <h3 className="text-[15px] font-semibold">{title}</h3>
         <div className="flex items-center gap-2">
           {action}
@@ -47,7 +47,7 @@ function Section({
           </button>
         </div>
       </div>
-      {open && <div className="px-5 pb-5">{children}</div>}
+      {open && <div className="px-4 pb-4 sm:px-5 sm:pb-5">{children}</div>}
     </section>
   );
 }
@@ -174,7 +174,7 @@ function PersonRow({
 
   return (
     <div className="rounded-xl border border-line">
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[15px] font-semibold">{name}</span>
@@ -314,10 +314,10 @@ export default function DetailPanel({
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[820px] flex-col bg-bg shadow-2xl">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-bg shadow-2xl sm:max-w-[820px]">
         {/* Kopf */}
-        <header className="flex items-center gap-3 border-b border-line bg-surface px-5 py-3.5">
-          <h2 className="min-w-0 flex-1 truncate text-xl font-semibold">{loading ? 'Laden …' : title}</h2>
+        <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{loading ? 'Laden …' : title}</h2>
 
           <div className="flex items-center overflow-hidden rounded-lg">
             <a
@@ -325,7 +325,7 @@ export default function DetailPanel({
               onClick={() => { setTab('info'); setCallFlow({ autoStart: true }); }}
               className={`btn-primary rounded-r-none ${primary?.phone ? '' : 'pointer-events-none opacity-50'}`}
             >
-              <Phone size={15} /> Anrufen
+              <Phone size={15} /> <span className="hidden sm:inline">Anrufen</span>
             </a>
             <button type="button" className="btn-primary rounded-l-none border-l border-white/25 !px-2.5"
                     onClick={() => { setTab('info'); setCallFlow((c) => (c ? null : { autoStart: false })); }}
@@ -380,7 +380,7 @@ export default function DetailPanel({
         </header>
 
         {/* Tabs */}
-        <div className="border-b border-line bg-surface px-5 py-3">
+        <div className="border-b border-line bg-surface px-3 py-2.5 sm:px-5 sm:py-3">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface-2 p-1">
             {([
               { key: 'info', label: 'Kontakt-Info', icon: User },
@@ -391,7 +391,7 @@ export default function DetailPanel({
                 key={key}
                 type="button"
                 onClick={() => setTab(key)}
-                className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm transition ${
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-1 py-2 text-xs transition sm:gap-2 sm:text-sm ${
                   tab === key ? 'bg-surface font-medium text-brand shadow-sm' : 'text-ink/80 hover:text-ink'
                 }`}
               >
@@ -402,7 +402,7 @@ export default function DetailPanel({
         </div>
 
         {/* Inhalt */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+        <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5">
           {loading || !contact ? (
             <p className="py-10 text-center text-sm text-muted">Laden …</p>
           ) : tab === 'info' ? (

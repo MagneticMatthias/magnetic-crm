@@ -84,7 +84,7 @@ export default function EmailComposer({
     <>
       <button className="btn-ghost" onClick={() => { setOpen(true); setSent(false); setError(null); }} disabled={disabled}
               title={disabled ? 'Kontakt hat keine E-Mail-Adresse' : undefined}>
-        <Mail size={15} /> E-Mail
+        <Mail size={15} /> <span className="hidden sm:inline">E-Mail</span>
       </button>
 
       {open && (

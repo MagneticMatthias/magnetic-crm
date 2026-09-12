@@ -17,7 +17,7 @@ export default async function PipelinesPage({
 
   if (!pipelines?.length) {
     return (
-      <div className="p-5 sm:p-7">
+      <div className="p-3 sm:p-7">
         <h1 className="mb-5 text-2xl font-semibold">Pipelines</h1>
         <Empty title="Noch keine Pipeline" hint="Lege unter Einstellungen deine erste Pipeline an." />
       </div>
@@ -64,9 +64,9 @@ export default async function PipelinesPage({
   const stageId = stageList.some((x) => x.id === s) ? (s as string) : null;
 
   return (
-    <div className="p-5 sm:p-7">
-      <div className="mb-5 flex items-baseline gap-3">
-        <h1 className="text-2xl font-semibold">{pipeline.name}</h1>
+    <div className="p-3 sm:p-7">
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:mb-5">
+        <h1 className="text-xl font-semibold sm:text-2xl">{pipeline.name}</h1>
         <span className="text-sm text-muted">{rows.length} Datensätze</span>
       </div>
 

@@ -86,7 +86,7 @@ export default function RecordTable<T extends { id: string }>({
   return (
     <div className="card">
       <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
-        <div className="relative w-56">
+        <div className="relative w-full sm:w-56">
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input className="input pl-9" placeholder="Suche" value={query}
                  onChange={(e) => setQuery(e.target.value)} />
@@ -141,7 +141,7 @@ export default function RecordTable<T extends { id: string }>({
           {filterOpen === 'builder' && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setFilterOpen('closed')} />
-              <div className="absolute left-0 z-20 mt-1.5">
+              <div className="fixed inset-x-4 top-20 z-20 sm:absolute sm:inset-x-auto sm:left-0 sm:top-full sm:mt-1.5">
                 <FilterBuilder
                   fields={fields}
                   value={filter}
@@ -182,7 +182,7 @@ export default function RecordTable<T extends { id: string }>({
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-2">{toolbarRight}</div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">{toolbarRight}</div>
       </div>
 
       <div className="overflow-x-auto">
