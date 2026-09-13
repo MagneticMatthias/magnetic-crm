@@ -87,9 +87,14 @@ async function must(p, label) {
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const splitName = (full) => {
   const parts = String(full ?? '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { first: null, last: null };
-  if (parts.length === 1) return { first: parts[0], last: null };
-  return { first: parts.slice(0, -1).join(' '), last: parts.at(-1) };
+  if (parts.length === 0) return { first_name: null, last_name: null };
+  if (parts.length === 1) return { first_name: parts[0], last_name: null };
+  return { first_name: parts.slice(0, -1).join(' '), last_name: parts.at(-1) };
+};
+// Firmenname aus einem Faden-Titel: Teil vor Gedankenstrich/Komma/"ueber", max. 40 Zeichen
+const companyFromTitle = (title) => {
+  const head = String(title ?? '').split(/\s[–—-]\s|,|\süber\s|\s\(/)[0].trim();
+  return (head || String(title ?? '').trim()).slice(0, 40);
 };
 const toIso = (v) => (v ? new Date(v).toISOString() : null);
 const toDate = (v) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
@@ -190,14 +195,21 @@ async function main() {
 
   const pipes = await ensurePipelines(orgId);
 
-  const [customers, pbContacts, projects, threadsAll, statusUpdates] = await Promise.all([
+  const [customers, pbContacts, projects, threadsAll, statusUpdates, projectAmounts, revenues] = await Promise.all([
     pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('threads'), pbAll('status_updates'),
+    pbAll('project_amounts'), pbAll('revenues'),
   ]);
+  // Umsatz je Projekt = Summe seiner Betraege (wie in der Auswertung des Projekttools)
+  const amountByProject = {};
+  for (const a of projectAmounts) amountByProject[a.project] = (amountByProject[a.project] ?? 0) + (Number(a.amount) || 0);
+  const revenueTotal = revenues.reduce((x, r) => x + (Number(r.amount) || 0), 0)
+    + projects.filter((p) => (p.kind ?? 'projekt') === 'projekt').reduce((x, p) => x + (amountByProject[p.id] ?? 0), 0);
   const threads = threadsAll.filter((t) => !t.done);
   const finished = projects.filter((p) => p.kind !== 'pipeline');
   console.log(`PocketBase: ${customers.length} Kunden, ${pbContacts.length} Ansprechpartner, ` +
     `${threads.length} offene Fäden (${threadsAll.length - threads.length} erledigte übersprungen), ` +
-    `${projects.length} Projekte (davon ${finished.length} abgeschlossen), ${statusUpdates.length} Projekt-Anmerkungen`);
+    `${projects.length} Projekte (davon ${finished.length} abgeschlossen), ${statusUpdates.length} Projekt-Anmerkungen, ` +
+    `${revenues.length} manuelle Umsätze · Gesamtumsatz ${revenueTotal.toLocaleString('de-DE')} €`);
 
   // Bereits vorhandene Kontakte (Idempotenz)
   const existing = await must(sb.from('contacts').select('id, company').eq('org_id', orgId), 'contacts');
@@ -268,10 +280,11 @@ async function main() {
     else if (p.phase === 'Angebot verschickt') stageId = pipes.angebot.stages['Angebot verschickt'];
     else stageId = pipes.angebot.stages['Erstgespräch'];
     if (!stageId) continue;
+    const isProjekt = (p.kind ?? 'projekt') === 'projekt';
     const projectDeal = await insertDeal({
       contact_id: contactId, pipeline_id: pipes.angebot.id, stage_id: stageId, title: p.name,
-      value: Number(p.amount) || 0, expected_close_date: toDate(p.followup),
-      created_at: toIso(p.created), won_at: toIso(p.won_at),
+      value: amountByProject[p.id] ?? (Number(p.amount) || 0), expected_close_date: toDate(p.followup),
+      created_at: toIso(p.created), won_at: isProjekt ? toIso(p.won_at || p.created) : toIso(p.won_at),
       next_step: !isPipeline ? `Projekt · Phase ${p.phase ?? '–'}` : null,
     });
     // Anmerkungen und Aufgaben des Projekts
@@ -287,6 +300,17 @@ async function main() {
           body: (u.is_task ? '✅ ' : '') + u.body, created_at: toIso(u.created) });
       }
     }
+  }
+
+  /* 2b) Manuell erfasste Umsaetze -> gewonnene Deals (Auswertung) */
+  for (const r of revenues) {
+    const cust = customers.find((c) => c.id === r.customer);
+    const contactId = cust ? customerToContact.get(cust.id) ?? null : null;
+    await insertDeal({
+      contact_id: contactId, pipeline_id: pipes.angebot.id, stage_id: pipes.angebot.stages['Angebot angenommen'],
+      title: r.note?.trim() || `${cust?.name ?? 'Kunde'} – Auftrag`, value: Number(r.amount) || 0,
+      source: 'Bestandskunde', created_at: toIso(r.date || r.created), won_at: toIso(r.date || r.created),
+    });
   }
 
   /* 3) Offene Faeden -> Deals in Angebot / Closing */
@@ -312,7 +336,7 @@ async function main() {
     let contactId = cust ? customerToContact.get(cust.id) : null;
     if (!contactId) {
       // Kein bekannter Kunde: Firma aus dem Titel-Anfang (vor dem Gedankenstrich)
-      const company = t.title.split(/\s[–-]\s/)[0].trim() || t.title;
+      const company = companyFromTitle(t.title);
       contactId = byCompany.get(norm(company))
         ?? await insertContact({ company, lead_source: 'Faden', created_at: toIso(t.created) });
     }
