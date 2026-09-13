@@ -30,7 +30,7 @@ export default async function PipelinesPage({
     await Promise.all([
       supabase.from('pipeline_stages').select('*').eq('pipeline_id', pipeline.id).order('position'),
       supabase.from('deals')
-        .select('*, contact:contacts(*, persons:contact_persons(*))')
+        .select('*, contact:contacts(*, persons:contact_persons(*)), stage:pipeline_stages(name, color)')
         .eq('pipeline_id', pipeline.id)
         .order('created_at', { ascending: false })
         .limit(1000),

@@ -158,7 +158,10 @@ export type Deal = {
   custom?: Record<string, string | null>;
 };
 
-export type DealWithContact = Deal & { contact: ContactWithPersons | null };
+export type DealWithContact = Deal & {
+  contact: ContactWithPersons | null;
+  stage?: { name: string; color: string } | null;
+};
 
 export type Activity = {
   id: string;

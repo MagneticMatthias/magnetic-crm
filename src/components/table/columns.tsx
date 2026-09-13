@@ -98,6 +98,16 @@ export const CONTACT_DEFAULT_COLUMNS = [
 
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'company', label: 'Firmenname', render: (r) => <Muted>{r.contact?.company}</Muted> },
+  {
+    key: 'stage', label: 'Phase',
+    render: (r) => r.stage ? <Badge color={r.stage.color}>{r.stage.name}</Badge> : <span className="text-muted">–</span>,
+  },
+  {
+    key: 'last_contacted_at', label: 'Zuletzt kontaktiert',
+    render: (r) => r.contact?.last_contacted_at
+      ? <span>{dateTime(r.contact.last_contacted_at)}</span>
+      : <span className="chip bg-surface-2 text-muted">noch nie</span>,
+  },
   { key: 'website', label: 'Website', render: (r) => <Web value={r.contact?.website} /> },
   {
     key: 'persons', label: 'Ansprechpartner',
@@ -134,5 +144,5 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [
-  'company', 'website', 'persons', 'created_at', 'phone', 'email',
+  'company', 'stage', 'last_contacted_at', 'persons', 'phone', 'email', 'website',
 ];

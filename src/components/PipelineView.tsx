@@ -76,7 +76,7 @@ export default function PipelineView({
         rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
         columns={DEAL_COLUMNS}
         defaultColumns={DEAL_DEFAULT_COLUMNS}
-        storageKey={`deals:${pipeline.id}`}
+        storageKey={`deals2:${pipeline.id}`}
         fields={DEAL_FIELDS}
         filter={filter}
         savedFilters={savedFilters}
