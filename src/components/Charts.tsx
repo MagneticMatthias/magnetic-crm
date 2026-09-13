@@ -2,7 +2,7 @@
 
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell,
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
 import { eur, num } from '@/lib/format';
 
@@ -84,6 +84,37 @@ export function SourceChart({ data }: { data: { quelle: string; umsatz: number; 
         <Bar dataKey="umsatz" radius={[0, 6, 6, 0]}>
           {data.map((_, i) => <Cell key={i} fill={palette[i % palette.length]} />)}
         </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+const PALETTE = ['#22c55e', '#6366f1', '#eab308', '#ef4444', '#0ea5e9', '#f97316', '#a855f7', '#14b8a6', '#64748b'];
+export const seriesColor = (i: number) => PALETTE[i % PALETTE.length];
+
+export function ShareDonut({ data }: { data: { name: string; value: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95} paddingAngle={2} stroke="none">
+          {data.map((_, i) => <Cell key={i} fill={seriesColor(i)} />)}
+        </Pie>
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => eur(Number(v))} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function YearBars({ data }: { data: { jahr: string; umsatz: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="jahr" tick={AXIS} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+        <Tooltip contentStyle={tooltipStyle} formatter={(v) => eur(Number(v))} />
+        <Bar dataKey="umsatz" fill="var(--brand)" radius={[6, 6, 0, 0]} name="Umsatz"
+             label={{ position: 'top', fontSize: 11, fill: 'var(--muted)', formatter: (v: unknown) => (Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(1).replace('.0', '')}k` : String(v)) }} />
       </BarChart>
     </ResponsiveContainer>
   );

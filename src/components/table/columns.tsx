@@ -25,6 +25,20 @@ const PersonChip = ({ count }: { count: number }) =>
     </span>
   );
 
+/** Hauptansprechpartner mit Hinweis auf weitere Personen derselben Firma. */
+const PrimaryPerson = ({ persons }: { persons: { first_name: string | null; last_name: string | null; is_primary: boolean }[] | undefined }) => {
+  const p = primaryPerson(persons);
+  const name = personName(p);
+  const more = (persons?.length ?? 0) - 1;
+  if (!name) return <span className="text-muted">Kein Ansprechpartner</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {name}
+      {more > 0 && <span className="chip bg-surface-2 text-muted" title={`${more} weitere Person(en) bei dieser Firma`}>+{more}</span>}
+    </span>
+  );
+};
+
 const Tel = ({ value }: { value: string | null | undefined }) =>
   value ? <a href={dialHref(value)} className="text-brand hover:underline"
               onClick={(e) => e.stopPropagation()}>{value}</a>
@@ -46,7 +60,8 @@ const Web = ({ value }: { value: string | null | undefined }) => {
 export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'first_name', label: 'Vorname', render: (r) => <Muted>{primaryPerson(r.persons)?.first_name}</Muted> },
   { key: 'last_name', label: 'Nachname', render: (r) => <Muted>{primaryPerson(r.persons)?.last_name}</Muted> },
-  { key: 'persons', label: 'Ansprechpartner', render: (r) => <PersonChip count={r.persons?.length ?? 0} /> },
+  { key: 'persons', label: 'Ansprechpartner', render: (r) => <PrimaryPerson persons={r.persons} /> },
+  { key: 'person_count', label: 'Anzahl Personen', render: (r) => <PersonChip count={r.persons?.length ?? 0} /> },
   { key: 'email', label: 'E-Mail', render: (r) => <Muted>{primaryPerson(r.persons)?.email}</Muted> },
   { key: 'phone', label: 'Telefon', render: (r) => <Tel value={primaryPerson(r.persons)?.phone} /> },
   { key: 'company', label: 'Firmenname', render: (r) => <Muted>{r.company}</Muted> },
@@ -71,7 +86,7 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
 ];
 
 export const CONTACT_DEFAULT_COLUMNS = [
-  'first_name', 'last_name', 'persons', 'email', 'phone', 'company', 'website', 'deals',
+  'company', 'persons', 'email', 'phone', 'website', 'lead_source', 'deals',
 ];
 
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [

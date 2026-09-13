@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, ListTree, BarChart3, FileInput, Settings,
-  Menu, X, PhoneForwarded, CheckSquare, Gauge, PhoneCall, Upload,
+  Menu, X, PhoneForwarded, CheckSquare, Gauge, PhoneCall, Upload, Euro,
 } from 'lucide-react';
 import { initials } from '@/lib/format';
 import type { Pipeline } from '@/lib/types';
@@ -26,6 +26,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
   {
     title: 'Analyse',
     items: [
+      { href: '/umsaetze', label: 'Umsätze', icon: Euro },
       { href: '/sales-controlling', label: 'Sales-Controlling', icon: BarChart3 },
       { href: '/aktivitaeten', label: 'Aktivitäten', icon: PhoneCall },
       { href: '/schlagzahl', label: 'Schlagzahl', icon: Gauge },
