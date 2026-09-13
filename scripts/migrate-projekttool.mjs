@@ -111,18 +111,11 @@ const PIPELINES = {
     ],
   },
   angebot: {
-    name: 'Angebot / Closing', kind: 'closer',
+    name: 'Fäden', kind: 'closer',
     stages: [
       ['Erstgespräch', 10, '#0ea5e9'], ['Angebot verschickt', 50, '#8b5cf6'],
       ['Mündliche Zusage', 90, '#f59e0b'],
       ['Angebot angenommen', 100, '#22c55e', 'won'], ['Verloren', 0, '#ef4444', 'lost'],
-    ],
-  },
-  bestand: {
-    name: 'Bestandskunden', kind: 'upsell',
-    stages: [
-      ['Aktiv', 50, '#22c55e'], ['Projekt läuft', 60, '#6366f1'], ['Upsell-Potenzial', 70, '#8b5cf6'],
-      ['Abgesprungen', 0, '#ef4444', 'lost'],
     ],
   },
 };
@@ -162,6 +155,13 @@ async function ensurePipelines(orgId) {
     }
     out[key] = { id: p?.id, stages: stageMap };
 
+    // Reihenfolge der Phasen wie definiert
+    if (p && !DRY) {
+      for (const [i, [name]] of def.stages.entries()) {
+        if (stageMap[name]) await sb.from('pipeline_stages').update({ position: i }).eq('id', stageMap[name]);
+      }
+    }
+
     // Phasen, die nicht mehr zur Definition gehoeren und leer sind, aufraeumen
     if (p && !DRY) {
       const wanted = new Set(def.stages.map(([n]) => norm(n)));
@@ -193,7 +193,20 @@ async function main() {
     console.log('🧹 Bestehende Kontakte, Deals, Aktivitäten, Notizen, Aufgaben gelöscht.');
   }
 
+  // "Angebot / Closing" aus frueheren Laeufen heisst jetzt "Fäden"
+  if (!DRY) await sb.from('pipelines').update({ name: 'Fäden' }).eq('org_id', orgId).eq('name', 'Angebot / Closing');
   const pipes = await ensurePipelines(orgId);
+
+  // Leere Pipelines, die nur vom Anlegen/frueheren Laeufen stammen, entfernen
+  if (!DRY) {
+    const { data: allPipes } = await sb.from('pipelines').select('id, name').eq('org_id', orgId);
+    for (const pl of allPipes ?? []) {
+      if (['Setting', 'Closing', 'Upsell', 'Reaktivierung', 'Bestandskunden'].includes(pl.name)) {
+        const { count } = await sb.from('deals').select('id', { count: 'exact', head: true }).eq('pipeline_id', pl.id);
+        if (!count) { await sb.from('pipelines').delete().eq('id', pl.id); console.log(`- leere Pipeline "${pl.name}" entfernt`); }
+      }
+    }
+  }
 
   const [customers, pbContacts, projects, threadsAll, statusUpdates, projectAmounts, revenues] = await Promise.all([
     pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('threads'), pbAll('status_updates'),
@@ -259,12 +272,8 @@ async function main() {
       } else if (c.contact) {
         await insertPerson(contactId, splitName(c.contact), true);
       }
-      const bestandDeal = await insertDeal({
-        contact_id: contactId, pipeline_id: pipes.bestand.id, stage_id: pipes.bestand.stages['Aktiv'],
-        title: `${c.name} – Bestandskunde`, source: 'Bestandskunde', created_at: toIso(c.created),
-      });
       if (c.note?.trim()) {
-        await insertNote({ contact_id: contactId, deal_id: bestandDeal, body: c.note.trim(), created_at: toIso(c.created) });
+        await insertNote({ contact_id: contactId, body: c.note.trim(), created_at: toIso(c.created) });
       }
     }
     customerToContact.set(c.id, contactId);
@@ -366,6 +375,14 @@ async function main() {
         title: t.next_step, description: t.wer === 'kunde' ? 'Wartet auf Antwort vom Kunden' : null,
         due_at: t.due ? new Date(t.due).toISOString() : null, priority: t.wer === 'ich' ? 1 : 2,
       }), 'task');
+    }
+  }
+
+  if (!DRY) {
+    const { data: haveF } = await sb.from('saved_filters').select('name').eq('org_id', orgId).eq('entity', 'contacts');
+    if (!(haveF ?? []).some((f) => f.name === 'Bestandskunden')) {
+      await sb.from('saved_filters').insert({ org_id: orgId, user_id: userId, entity: 'contacts', name: 'Bestandskunden',
+        definition: { groups: [[{ field: 'lead_source', operator: 'eq', value: 'Bestandskunde' }]] } });
     }
   }
 

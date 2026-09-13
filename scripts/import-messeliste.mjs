@@ -89,6 +89,7 @@ async function main() {
       let st = have.find((x) => norm(x.name) === norm(name));
       if (!st && !DRY) st = await must(sb.from('pipeline_stages').insert({ pipeline_id: pipeline.id, name, position: i, probability: prob, color, is_won: flag === 'won', is_lost: flag === 'lost' }).select('id').single(), 'stage');
       stageIds[name] = st?.id ?? `dry-${i}`;
+      if (st && !DRY) await sb.from('pipeline_stages').update({ position: i }).eq('id', st.id);
     }
   }
 
