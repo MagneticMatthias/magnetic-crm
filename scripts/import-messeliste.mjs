@@ -37,17 +37,36 @@ const STAGES = [
   ['Entscheider kein Interesse', 0, '#ef4444', 'lost'],
 ];
 
-/** "Oliver Gruß (Kontakt Pressebereich)" / "Jörg Ramms, Head of Marketing" / "Annette Hubeny Marketing" */
-function parsePerson(raw) {
-  const t = clean(raw);
-  if (!t || /^nicht im verzeichnis/i.test(t)) return null;
-  let name = t, role = null;
-  const m = t.match(/^([^(,]+)(?:\(([^)]*)\))?(?:,\s*(.+))?$/);
-  if (m) { name = m[1].trim(); role = clean(m[2] || m[3]); }
-  const words = name.split(/\s+/);
-  if (!role && words.length > 2) { name = words.slice(0, 2).join(' '); role = words.slice(2).join(' '); }
-  const parts = name.split(/\s+/);
-  return { first_name: parts.slice(0, -1).join(' ') || null, last_name: parts.at(-1) || null, job_title: role };
+/**
+ * Ansprechpartner-Feld in Personen zerlegen. Beispiele:
+ *   "Oliver Gruß (Kontakt Pressebereich)"           -> 1 Person mit Funktion
+ *   "Jörg Ramms, Head of Marketing (Pressekontakt)" -> 1 Person mit Funktion
+ *   "Annette Hubeny Marketing"                      -> Name = erste zwei Woerter, Rest Funktion
+ *   "Claudia Schöwe (Presse); Stephanie Zobel (Presse)" -> 2 Personen
+ *   "kein Marketingkontakt; Florian von Tucher (Chairman)" -> Hinweis ignoriert, 1 Person
+ *   "nicht im Verzeichnis – ..." / "kein Name auf der Website" -> keine Person
+ */
+const PARTICLES = new Set(['von', 'van', 'de', 'der', 'zu', 'zur', 'vom', 'da', 'di', 'del', 'du']);
+function parsePersons(raw) {
+  const out = [];
+  for (const seg of String(raw ?? '').split(';')) {
+    const t = clean(seg);
+    if (!t || /^(nicht|kein|keine|unbekannt|n\/a)\b/i.test(t)) continue;
+    let name = t, role = null;
+    const m = t.match(/^([^(,]+)(?:\(([^)]*)\))?(?:,\s*(.+))?$/);
+    if (m) { name = m[1].trim(); role = clean(m[2] || m[3]); }
+    let words = name.split(/\s+/).filter(Boolean);
+    // Namenszusaetze ("von") gehoeren zum Nachnamen
+    let nameLen = 2;
+    while (nameLen < words.length && PARTICLES.has(words[nameLen - 1].toLowerCase())) nameLen++;
+    if (!role && words.length > nameLen) { role = words.slice(nameLen).join(' '); words = words.slice(0, nameLen); }
+    if (words.length < 1 || /^[a-zäöü]/.test(words[0])) continue; // kein Grossbuchstabe -> kein Name
+    let split = 1;
+    for (let i = 1; i < words.length; i++) if (PARTICLES.has(words[i].toLowerCase())) { split = i; break; }
+    if (split === 1 && words.length > 1) split = words.length - 1;
+    out.push({ first_name: words.slice(0, split).join(' ') || null, last_name: words.slice(split).join(' ') || null, job_title: role });
+  }
+  return out;
 }
 
 async function main() {
@@ -98,9 +117,9 @@ async function main() {
 
     // Ansprechpartner + Zentrale
     const persons = [];
-    const ap = parsePerson(r.ansprechpartner);
     const apPhone = clean(r.durchwahl) || clean(r.ap_telefon);
-    if (ap) persons.push({ ...ap, phone: apPhone, email: clean(r.ap_email), is_primary: true, position: 0 });
+    parsePersons(r.ansprechpartner).forEach((ap, i) =>
+      persons.push({ ...ap, phone: i === 0 ? apPhone : null, email: i === 0 ? clean(r.ap_email) : null, is_primary: i === 0, position: i }));
     if (clean(r.zentrale_telefon) || clean(r.zentrale_email)) {
       persons.push({ first_name: null, last_name: 'Zentrale', phone: clean(r.zentrale_telefon), email: clean(r.zentrale_email), is_primary: persons.length === 0, position: persons.length });
     }
