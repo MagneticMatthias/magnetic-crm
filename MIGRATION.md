@@ -6,15 +6,13 @@ und die Kontaktliste aus PocketBase und legt sie im CRM an.
 
 | Projekttool | Magnetic_CRM |
 |---|---|
-| Kunde | Kontakt (Leadherkunft „Bestandskunde") + Deal in Pipeline **Bestandskunden / Aktiv** |
-| Ansprechpartner des Kunden | Ansprechpartner am Kontakt |
-| Projekt (kind = pipeline) | Deal in **Angebot / Closing**, Phase nach Projektphase |
+| Kunde + Ansprechpartner | Kontakt mit Personen (Leadherkunft „Bestandskunde") + Deal in **Bestandskunden / Aktiv** |
+| Offener Faden | Deal in **Angebot / Closing**, Phase nach Stufe (Erstgespräch / Angebot verschickt / Mündliche Zusage), Wert, nächster Schritt, Fälligkeit; Kunde über den Titel zugeordnet |
+| Faden-Verlauf | Notizen („Schritt: …") |
+| Nächster Schritt + wer dran | Aufgabe (Priorität hoch, wenn du dran bist) |
+| Projekt (Pipeline) | offener Deal in **Angebot / Closing** |
 | Projekt (abgeschlossen) | gewonnener Deal mit Auftragswert und Datum – für das Sales-Controlling |
-| Akquise-Liste → Lead | Kontakt (Leadherkunft = Listenname) + Deal in **Kaltakquise**, Phase nach Lead-Status |
-| Lead-Historie | Aktivitäten (Status-Wechsel als Call, Notizen als Notiz) |
-| Stand-Einträge | Notizen |
-| Wiedervorlage | Aufgabe „Wiedervorlage anrufen" |
-| Kontaktliste | Ansprechpartner am passenden Kontakt (nach Firma) oder neuer Kontakt |
+| Erledigte Fäden, alte Akquise-Listen, Kontaktliste | werden **nicht** übernommen |
 
 Bereits vorhandene Firmen (gleicher Name) werden übersprungen – das Skript
 kann also mehrfach laufen.

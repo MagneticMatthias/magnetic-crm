@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
- * Uebernimmt Kunden, Ansprechpartner, Projekte/Pipeline, Akquise-Listen mit
- * Leads, Status-Historie und Kontaktliste aus dem Projekttool (PocketBase)
- * nach Magnetic_CRM (Supabase).
+ * Uebernimmt aus dem Projekttool (PocketBase) nach Magnetic_CRM (Supabase):
+ *   - Kunden mit Ansprechpartnern        -> Kontakte + Deal "Bestandskunden / Aktiv"
+ *   - offene Faeden (threads, done=false) -> Deals in "Angebot / Closing" nach Stufe
+ *   - Projekte (alle)                     -> Deals; abgeschlossene als gewonnen (Auswertung)
+ * Die alten Akquise-Listen (leads) und die Kontaktliste werden NICHT uebernommen.
  *
  * Aufruf (auf dem Mac im Ordner crm/):
  *   PB_URL=http://magnetic-nas:8090 PB_ADMIN_EMAIL=... PB_ADMIN_PASS=... \
@@ -106,7 +108,8 @@ const PIPELINES = {
   angebot: {
     name: 'Angebot / Closing', kind: 'closer',
     stages: [
-      ['Anfrage eingegangen', 30, '#0ea5e9'], ['Angebot verschickt', 60, '#8b5cf6'],
+      ['Erstgespräch', 10, '#0ea5e9'], ['Angebot verschickt', 50, '#8b5cf6'],
+      ['Mündliche Zusage', 90, '#f59e0b'],
       ['Angebot angenommen', 100, '#22c55e', 'won'], ['Verloren', 0, '#ef4444', 'lost'],
     ],
   },
@@ -153,6 +156,15 @@ async function ensurePipelines(orgId) {
       }
     }
     out[key] = { id: p?.id, stages: stageMap };
+
+    // Phasen, die nicht mehr zur Definition gehoeren und leer sind, aufraeumen
+    if (p && !DRY) {
+      const wanted = new Set(def.stages.map(([n]) => norm(n)));
+      for (const st of stagesAll.filter((x) => x.pipeline_id === p.id && !wanted.has(norm(x.name)))) {
+        const { count } = await sb.from('deals').select('id', { count: 'exact', head: true }).eq('stage_id', st.id);
+        if (!count) await sb.from('pipeline_stages').delete().eq('id', st.id);
+      }
+    }
   }
   return out;
 }
@@ -178,12 +190,14 @@ async function main() {
 
   const pipes = await ensurePipelines(orgId);
 
-  const [customers, pbContacts, projects, lists, leads, leadUpdates, akqContacts] = await Promise.all([
-    pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('acq_lists'),
-    pbAll('leads'), pbAll('lead_updates'), pbAll('akq_contacts'),
+  const [customers, pbContacts, projects, threadsAll] = await Promise.all([
+    pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('threads'),
   ]);
-  console.log(`PocketBase: ${customers.length} Kunden, ${pbContacts.length} Ansprechpartner, ${projects.length} Projekte, ` +
-    `${lists.length} Listen, ${leads.length} Leads, ${leadUpdates.length} Stand-Einträge, ${akqContacts.length} Kontaktlisten-Einträge`);
+  const threads = threadsAll.filter((t) => !t.done);
+  const finished = projects.filter((p) => p.kind !== 'pipeline');
+  console.log(`PocketBase: ${customers.length} Kunden, ${pbContacts.length} Ansprechpartner, ` +
+    `${threads.length} offene Fäden (${threadsAll.length - threads.length} erledigte übersprungen), ` +
+    `${projects.length} Projekte (davon ${finished.length} abgeschlossen)`);
 
   // Bereits vorhandene Kontakte (Idempotenz)
   const existing = await must(sb.from('contacts').select('id, company').eq('org_id', orgId), 'contacts');
@@ -249,7 +263,7 @@ async function main() {
     if (p.outcome === 'verloren') stageId = pipes.angebot.stages['Verloren'];
     else if (p.won_at || !isPipeline || p.phase === 'Angebot angenommen') stageId = pipes.angebot.stages['Angebot angenommen'];
     else if (p.phase === 'Angebot verschickt') stageId = pipes.angebot.stages['Angebot verschickt'];
-    else stageId = pipes.angebot.stages['Anfrage eingegangen'];
+    else stageId = pipes.angebot.stages['Erstgespräch'];
     if (!stageId) continue;
     await insertDeal({
       contact_id: contactId, pipeline_id: pipes.angebot.id, stage_id: stageId, title: p.name,
@@ -259,66 +273,65 @@ async function main() {
     });
   }
 
-  /* 3) Akquise-Listen + Leads */
-  const listName = new Map(lists.map((l) => [l.id, l.name]));
-  const leadToContact = new Map();
-  for (const l of leads) {
-    const source = listName.get(l.list) ?? 'Kaltakquise';
-    let contactId = byCompany.get(norm(l.company));
-    if (contactId) { stats.skipped++; leadToContact.set(l.id, contactId); continue; }
-    contactId = await insertContact({
-      company: l.company, website: l.website || null, notes: l.note || null, lead_source: source,
-      last_contacted_at: toIso(l.last_activity), created_at: toIso(l.created),
-    });
-    leadToContact.set(l.id, contactId);
-    await insertPerson(contactId, { phone: l.phone || null, email: l.email || null }, true);
+  /* 3) Offene Faeden -> Deals in Angebot / Closing */
+  // Kunde zum Faden wie im Projekttool: Kundenname (oder markantes erstes Wort) im Titel
+  function customerOf(title) {
+    const t = norm(title);
+    let best = null, bestLen = 0;
+    for (const c of customers) {
+      const full = norm(c.name);
+      if (!full) continue;
+      const first = full.split(/[\s-]+/)[0];
+      const hit = t.includes(full) ? full : first.length >= 4 && t.includes(first) ? first : '';
+      if (hit && hit.length > bestLen) { best = c; bestLen = hit.length; }
+    }
+    return best;
+  }
+  const STUFE_TO_STAGE = {
+    'erstgespräch': 'Erstgespräch', 'angebot verschickt': 'Angebot verschickt', 'mündliche zusage': 'Mündliche Zusage',
+  };
 
-    const stageName = LEAD_STATUS_TO_STAGE[l.status] ?? 'Offen';
+  for (const t of threads) {
+    const cust = customerOf(t.title);
+    let contactId = cust ? customerToContact.get(cust.id) : null;
+    if (!contactId) {
+      // Kein bekannter Kunde: Firma aus dem Titel-Anfang (vor dem Gedankenstrich)
+      const company = t.title.split(/\s[–-]\s/)[0].trim() || t.title;
+      contactId = byCompany.get(norm(company))
+        ?? await insertContact({ company, lead_source: 'Faden', created_at: toIso(t.created) });
+    }
+
+    const stageName = STUFE_TO_STAGE[norm(t.stufe)] ?? 'Erstgespräch';
     const dealId = await insertDeal({
-      contact_id: contactId, pipeline_id: pipes.kaltakquise.id, stage_id: pipes.kaltakquise.stages[stageName],
-      title: l.company, source, created_at: toIso(l.created), last_activity_at: toIso(l.last_activity),
-      custom: { aufregung: l.aufregung || null, sterne: l.sterne || null },
+      contact_id: contactId, pipeline_id: pipes.angebot.id, stage_id: pipes.angebot.stages[stageName],
+      title: t.title, value: Number(t.wert) || 0, next_step: t.next_step || null,
+      expected_close_date: toDate(t.due), source: cust ? 'Bestandskunde' : 'Faden',
+      created_at: toIso(t.created), last_activity_at: toIso(t.updated),
+      custom: { wer: t.wer || null, aufregung: t.aufregung || null, sterne: t.sterne || null },
     });
 
-    // Historie -> Aktivitaeten
+    // Verlauf der frueheren "naechsten Schritte" -> Notizen
     let history = [];
-    try { history = l.history ? JSON.parse(l.history) : []; } catch { /* kaputtes JSON ignorieren */ }
+    try { history = t.history ? JSON.parse(t.history) : []; } catch { /* kaputtes JSON ignorieren */ }
     for (const h of history) {
-      await insertActivity({
-        contact_id: contactId, deal_id: dealId, type: h.k === 'status' ? 'call' : 'note',
-        call_kind: h.k === 'status' ? 'opening' : null,
-        subject: h.k === 'status' ? `Status: ${h.v}` : null, body: h.k === 'note' ? h.v : null,
-        occurred_at: toIso(h.t) ?? new Date().toISOString(),
-      });
+      if (!h?.v) continue;
+      await insertNote({ contact_id: contactId, deal_id: dealId, body: `Schritt: ${h.v}`, created_at: toIso(h.t) });
     }
-    for (const u of leadUpdates.filter((x) => x.lead === l.id)) {
-      await insertNote({ contact_id: contactId, deal_id: dealId, body: u.body, created_at: toIso(u.created) });
-    }
-    if (l.follow_up || l.followup_flag) {
+
+    // Wer ist dran + Faelligkeit -> Aufgabe
+    if (t.next_step && (t.wer === 'ich' || t.due)) {
       stats.tasks++;
       if (!DRY) await must(sb.from('tasks').insert({
         org_id: orgId, contact_id: contactId, deal_id: dealId, assignee_id: userId, created_by: userId,
-        title: 'Wiedervorlage anrufen', due_at: l.follow_up ? new Date(l.follow_up).toISOString() : null, priority: 1,
+        title: t.next_step, description: t.wer === 'kunde' ? 'Wartet auf Antwort vom Kunden' : null,
+        due_at: t.due ? new Date(t.due).toISOString() : null, priority: t.wer === 'ich' ? 1 : 2,
       }), 'task');
-    }
-  }
-
-  /* 4) Kontaktliste */
-  for (const k of akqContacts) {
-    const person = { ...splitName(k.name), email: k.email || null, phone: k.phone || null, job_title: k.role || null };
-    let contactId = k.company ? byCompany.get(norm(k.company)) : null;
-    if (!contactId) {
-      contactId = await insertContact({ company: k.company || k.name, notes: k.note || null, lead_source: 'Kontaktliste', created_at: toIso(k.created) });
-      await insertPerson(contactId, person, true);
-    } else {
-      await insertPerson(contactId, person, false);
-      if (k.note) await insertNote({ contact_id: contactId, body: k.note, created_at: toIso(k.created) });
     }
   }
 
   console.log('\n✅ Fertig.');
   console.log(`   ${stats.contacts} Kontakte, ${stats.persons} Ansprechpartner, ${stats.deals} Deals,`);
-  console.log(`   ${stats.activities} Aktivitäten, ${stats.notes} Notizen, ${stats.tasks} Wiedervorlagen`);
+  console.log(`   ${stats.activities} Aktivitäten, ${stats.notes} Notizen, ${stats.tasks} Aufgaben`);
   if (stats.skipped) console.log(`   ${stats.skipped} bereits vorhandene Firmen übersprungen`);
   if (DRY) console.log('\n   Probelauf – zum Schreiben ohne DRY_RUN=1 starten.');
 }
