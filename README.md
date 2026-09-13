@@ -14,7 +14,7 @@ Datenmodell, eigene Oberfläche, eigene Texte.
 | **Pipeline-Ansicht** | Phasen als Tabs mit Zählern, darunter die Deal-Tabelle; Phase direkt im Panel wechseln |
 | **Kontakte** | Kontakt = Firma mit beliebig vielen Ansprechpartnern (Hauptansprechpartner markiert), Website, Adresse, Leadherkunft, Opener-Kürzel; Tabelle mit Spaltenwahl und Mehrfachauswahl |
 | **Filter** | Filter-Builder mit Feld / Bedingung / Wert, ODER-Gruppen, Datumsbedingungen („Zuletzt kontaktiert ist vor X Tagen"), speicherbare Filter |
-| **Detail-Panel** | Slide-over mit Tabs Kontakt-Info, Aktivitäten und Notizen (Rich-Text, anheften). Karten: Ansprechpartner (kompakte Zeilen, primärer Ansprechpartner, aufklappbare Bearbeitung), Deal-Name, Deal-Status, Stammdaten, Deal-Eigenschaften, Marketing-Informationen (UTM), Setter-Informationen, verknüpfter Kontakt, Aufgaben – Felder speichern beim Verlassen |
+| **Detail-Panel** | Slide-over mit Tabs Kontakt-Info, Aktivitäten und Notizen (Rich-Text, Bilder und Dateianhänge, anheften). Karten: Ansprechpartner (kompakte Zeilen, primärer Ansprechpartner, aufklappbare Bearbeitung), Deal-Name, Deal-Status, Stammdaten, Deal-Eigenschaften, Marketing-Informationen (UTM), Setter-Informationen, verknüpfter Kontakt, Aufgaben – Felder speichern beim Verlassen |
 | **Deal-Ansicht** | Konfigurator je Nutzer: Karten per Drag & Drop sortieren, ein- und ausblenden |
 | **Deals** | Wert, Phase, Setter, Closer, Leadquelle, erwarteter Abschluss, nächster Schritt, Phasen-Historie |
 | **Call-Flow Tracking** | Karte im Panel: Anruf-Typ, „Wer hat abgenommen?" (Gatekeeper / Entscheider), Datum, Uhrzeit mit „Jetzt", mitlaufender Timer, Rich-Text-Notizen, Ergebnis schiebt den Deal weiter |
@@ -37,6 +37,7 @@ Datenmodell, eigene Oberfläche, eigene Texte.
    - `supabase/03_ui_rework.sql`
    - `supabase/04_deal_panel.sql`
    - `supabase/05_callflow_forms.sql`
+   - `supabase/07_attachments.sql` (Anhänge in Notizen, Storage-Bucket)
    - `supabase/06_grants.sql` (Zugriff der API-Rollen; noetig, wenn beim Projekt "Automatically expose new tables" aus ist)
 3. `.env.example` nach `.env.local` kopieren und die Supabase-Werte eintragen.
 4. Installieren und starten:

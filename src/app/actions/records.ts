@@ -63,13 +63,29 @@ export async function loadContactDetail(contactId: string, dealId?: string | nul
   const c = contact as ContactWithPersons;
   c.persons = [...(c.persons ?? [])].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.position - b.position);
 
+  // Anhaenge der Notizen mit signierten URLs (1 h)
+  const noteList = (notes ?? []) as NoteWithUser[];
+  if (noteList.length) {
+    const { data: atts } = await supabase.from('note_attachments').select('*')
+      .in('note_id', noteList.map((n) => n.id)).order('created_at');
+    if (atts?.length) {
+      const { data: signed } = await supabase.storage.from('attachments')
+        .createSignedUrls(atts.map((a) => a.path), 3600);
+      const urlByPath = new Map((signed ?? []).map((x) => [x.path, x.signedUrl]));
+      noteList.forEach((n) => {
+        n.attachments = atts.filter((a) => a.note_id === n.id)
+          .map((a) => ({ ...a, url: urlByPath.get(a.path) ?? undefined }));
+      });
+    }
+  }
+
   return {
     contact: c,
     deals: (deals ?? []) as ContactDetail['deals'],
     pipelines: (pipelines ?? []) as Pipeline[],
     stages: (stages ?? []) as Stage[],
     activities: (activities ?? []) as ContactDetail['activities'],
-    notes: (notes ?? []) as NoteWithUser[],
+    notes: noteList,
     tasks: (tasks ?? []) as Task[],
     templates: (templates ?? []) as EmailTemplate[],
     smtpReady: smtpConfigured(),
@@ -248,15 +264,29 @@ export async function savePanelLayout(cards: string[]) {
 
 /* -------------------------------- Notizen ----------------------------- */
 
-export async function createNote(input: { contactId: string; dealId?: string | null; body: string }) {
+export type PendingAttachment = { path: string; name: string; size: number; mime: string | null };
+
+export async function createNote(input: {
+  contactId: string; dealId?: string | null; body: string; attachments?: PendingAttachment[];
+}) {
   const { supabase, orgId, profile } = await ctx();
   const body = input.body.trim();
-  if (!body || body === '<br>') return;
+  const atts = input.attachments ?? [];
+  if ((!body || body === '<br>') && atts.length === 0) return;
+
+  const noteId = crypto.randomUUID();
   const { error } = await supabase.from('notes').insert({
-    org_id: orgId, contact_id: input.contactId, deal_id: input.dealId ?? null,
-    user_id: profile.id, body,
+    id: noteId, org_id: orgId, contact_id: input.contactId, deal_id: input.dealId ?? null,
+    user_id: profile.id, body: body || '',
   });
   if (error) throw new Error(error.message);
+
+  if (atts.length) {
+    const { error: aErr } = await supabase.from('note_attachments').insert(
+      atts.map((a) => ({ org_id: orgId, note_id: noteId, ...a })),
+    );
+    if (aErr) throw new Error(aErr.message);
+  }
 }
 
 export async function togglePinNote(noteId: string, pinned: boolean) {
@@ -266,6 +296,8 @@ export async function togglePinNote(noteId: string, pinned: boolean) {
 
 export async function deleteNote(noteId: string) {
   const { supabase } = await ctx();
+  const { data: atts } = await supabase.from('note_attachments').select('path').eq('note_id', noteId);
+  if (atts?.length) await supabase.storage.from('attachments').remove(atts.map((a) => a.path));
   await supabase.from('notes').delete().eq('id', noteId);
 }
 

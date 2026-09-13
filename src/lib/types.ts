@@ -87,8 +87,19 @@ export type Note = {
   updated_at: string;
 };
 
+export type NoteAttachment = {
+  id: string;
+  note_id: string;
+  path: string;
+  name: string;
+  size: number;
+  mime: string | null;
+  url?: string; // signierte URL, 1 h gueltig
+};
+
 export type NoteWithUser = Note & {
   user: { full_name: string | null; email: string | null } | null;
+  attachments?: NoteAttachment[];
 };
 
 export type SavedFilter = {

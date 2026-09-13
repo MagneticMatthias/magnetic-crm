@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
-  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree,
+  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
 } from 'lucide-react';
 import {
   loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
@@ -623,8 +623,8 @@ export default function DetailPanel({
             </>
           ) : (
             <>
-              <NoteEditor onSubmit={async (html) => {
-                await createNote({ contactId, dealId: mainDeal?.id, body: html });
+              <NoteEditor orgId={contact.org_id} onSubmit={async (html, attachments) => {
+                await createNote({ contactId, dealId: mainDeal?.id, body: html, attachments });
                 await reload();
               }} />
 
@@ -647,10 +647,29 @@ export default function DetailPanel({
                             <span className="text-xs text-muted">{dateTime(n.created_at)}</span>
                             {n.pinned && <Pin size={12} className="text-brand" />}
                           </div>
-                          <div
-                            className="prose-sm mt-1.5 text-sm [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc [&_img]:max-h-56 [&_img]:rounded-md [&_a]:text-brand"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.body) }}
-                          />
+                          {n.body && (
+                            <div
+                              className="prose-sm mt-1.5 text-sm [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc [&_img]:max-h-56 [&_img]:rounded-md [&_a]:text-brand"
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.body) }}
+                            />
+                          )}
+                          {n.attachments && n.attachments.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {n.attachments.map((a) => a.mime?.startsWith('image/') && a.url ? (
+                                <a key={a.id} href={a.url} target="_blank" rel="noreferrer noopener" title={a.name}
+                                   className="block overflow-hidden rounded-lg border border-line">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={a.url} alt={a.name} className="h-28 w-28 object-cover transition hover:scale-105" />
+                                </a>
+                              ) : (
+                                <a key={a.id} href={a.url} target="_blank" rel="noreferrer noopener"
+                                   className="flex items-center gap-2 rounded-lg border border-line bg-surface-2/60 px-2.5 py-1.5 text-xs hover:border-brand">
+                                  <Paperclip size={13} className="text-muted" />
+                                  <span className="max-w-[160px] truncate">{a.name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex shrink-0 gap-0.5">
                           <button type="button" className={`grid h-7 w-7 place-items-center rounded-md hover:bg-surface-2 ${n.pinned ? 'text-brand' : 'text-muted'}`}

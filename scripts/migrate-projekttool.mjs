@@ -190,14 +190,14 @@ async function main() {
 
   const pipes = await ensurePipelines(orgId);
 
-  const [customers, pbContacts, projects, threadsAll] = await Promise.all([
-    pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('threads'),
+  const [customers, pbContacts, projects, threadsAll, statusUpdates] = await Promise.all([
+    pbAll('customers'), pbAll('contacts'), pbAll('projects'), pbAll('threads'), pbAll('status_updates'),
   ]);
   const threads = threadsAll.filter((t) => !t.done);
   const finished = projects.filter((p) => p.kind !== 'pipeline');
   console.log(`PocketBase: ${customers.length} Kunden, ${pbContacts.length} Ansprechpartner, ` +
     `${threads.length} offene Fäden (${threadsAll.length - threads.length} erledigte übersprungen), ` +
-    `${projects.length} Projekte (davon ${finished.length} abgeschlossen)`);
+    `${projects.length} Projekte (davon ${finished.length} abgeschlossen), ${statusUpdates.length} Projekt-Anmerkungen`);
 
   // Bereits vorhandene Kontakte (Idempotenz)
   const existing = await must(sb.from('contacts').select('id, company').eq('org_id', orgId), 'contacts');
@@ -247,10 +247,13 @@ async function main() {
       } else if (c.contact) {
         await insertPerson(contactId, splitName(c.contact), true);
       }
-      await insertDeal({
+      const bestandDeal = await insertDeal({
         contact_id: contactId, pipeline_id: pipes.bestand.id, stage_id: pipes.bestand.stages['Aktiv'],
         title: `${c.name} – Bestandskunde`, source: 'Bestandskunde', created_at: toIso(c.created),
       });
+      if (c.note?.trim()) {
+        await insertNote({ contact_id: contactId, deal_id: bestandDeal, body: c.note.trim(), created_at: toIso(c.created) });
+      }
     }
     customerToContact.set(c.id, contactId);
   }
@@ -265,12 +268,25 @@ async function main() {
     else if (p.phase === 'Angebot verschickt') stageId = pipes.angebot.stages['Angebot verschickt'];
     else stageId = pipes.angebot.stages['Erstgespräch'];
     if (!stageId) continue;
-    await insertDeal({
+    const projectDeal = await insertDeal({
       contact_id: contactId, pipeline_id: pipes.angebot.id, stage_id: stageId, title: p.name,
       value: Number(p.amount) || 0, expected_close_date: toDate(p.followup),
       created_at: toIso(p.created), won_at: toIso(p.won_at),
       next_step: !isPipeline ? `Projekt · Phase ${p.phase ?? '–'}` : null,
     });
+    // Anmerkungen und Aufgaben des Projekts
+    for (const u of statusUpdates.filter((x) => x.project === p.id)) {
+      if (u.is_task && !u.done) {
+        stats.tasks++;
+        if (!DRY) await must(sb.from('tasks').insert({
+          org_id: orgId, contact_id: contactId, deal_id: projectDeal, assignee_id: userId, created_by: userId,
+          title: u.body, priority: 2, created_at: toIso(u.created),
+        }), 'task');
+      } else {
+        await insertNote({ contact_id: contactId, deal_id: projectDeal,
+          body: (u.is_task ? '✅ ' : '') + u.body, created_at: toIso(u.created) });
+      }
+    }
   }
 
   /* 3) Offene Faeden -> Deals in Angebot / Closing */
