@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { Users, ListTree, ExternalLink } from 'lucide-react';
-import { dateTime, eur, personName, primaryPerson } from '@/lib/format';
+import { Badge } from '@/components/Badge';
+import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
 import type { ContactWithPersons, DealWithContact } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
 
@@ -63,7 +64,7 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'persons', label: 'Ansprechpartner', render: (r) => <PrimaryPerson persons={r.persons} /> },
   { key: 'person_count', label: 'Anzahl Personen', render: (r) => <PersonChip count={r.persons?.length ?? 0} /> },
   { key: 'email', label: 'E-Mail', render: (r) => <Muted>{primaryPerson(r.persons)?.email}</Muted> },
-  { key: 'phone', label: 'Telefon', render: (r) => <Tel value={primaryPerson(r.persons)?.phone} /> },
+  { key: 'phone', label: 'Telefon', render: (r) => <Tel value={phoneOf(r.persons)} /> },
   { key: 'company', label: 'Firmenname', render: (r) => <Muted>{r.company}</Muted> },
   { key: 'website', label: 'Website', render: (r) => <Web value={r.website} /> },
   {
@@ -83,6 +84,12 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
     key: 'last_contacted_at', label: 'Zuletzt kontaktiert',
     render: (r) => <span className="text-muted">{dateTime(r.last_contacted_at)}</span>,
   },
+  { key: 'custom.prio', label: 'Prio', render: (r) => <Muted>{r.custom?.prio}</Muted> },
+  { key: 'custom.kanal', label: 'Kanal', render: (r) => r.custom?.kanal ? <Badge>{r.custom.kanal === 'A' ? 'A · LinkedIn' : 'B · Telefon'}</Badge> : <span className="text-muted">–</span> },
+  { key: 'custom.standtyp', label: 'Standtyp', render: (r) => <Muted>{r.custom?.standtyp}</Muted> },
+  { key: 'custom.halle_stand', label: 'Halle / Stand', render: (r) => <Muted>{r.custom?.halle_stand}</Muted> },
+  { key: 'custom.hauptaussteller', label: 'Hauptaussteller', render: (r) => <Muted>{r.custom?.hauptaussteller}</Muted> },
+  { key: 'custom.budgetklasse', label: 'Budgetklasse', render: (r) => <Muted>{r.custom?.budgetklasse}</Muted> },
 ];
 
 export const CONTACT_DEFAULT_COLUMNS = [
@@ -109,7 +116,7 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
     key: 'created_at', label: 'Deal erstellt am',
     render: (r) => <span className="text-muted">{dateTime(r.created_at)}</span>,
   },
-  { key: 'phone', label: 'Telefon', render: (r) => <Tel value={primaryPerson(r.contact?.persons)?.phone} /> },
+  { key: 'phone', label: 'Telefon', render: (r) => <Tel value={phoneOf(r.contact?.persons)} /> },
   { key: 'email', label: 'E-Mail', render: (r) => <Muted>{primaryPerson(r.contact?.persons)?.email}</Muted> },
   { key: 'title', label: 'Deal', render: (r) => <Muted>{r.title}</Muted> },
   { key: 'value', label: 'Wert', render: (r) => <span className="tabular-nums">{eur(r.value)}</span> },
@@ -119,6 +126,11 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
     key: 'last_activity_at', label: 'Letzte Aktivität',
     render: (r) => <span className="text-muted">{dateTime(r.last_activity_at)}</span>,
   },
+  { key: 'custom.prio', label: 'Prio', render: (r) => <Muted>{r.contact?.custom?.prio}</Muted> },
+  { key: 'custom.kanal', label: 'Kanal', render: (r) => r.contact?.custom?.kanal ? <Badge>{r.contact.custom.kanal === 'A' ? 'A · LinkedIn' : 'B · Telefon'}</Badge> : <span className="text-muted">–</span> },
+  { key: 'custom.standtyp', label: 'Standtyp', render: (r) => <Muted>{r.contact?.custom?.standtyp}</Muted> },
+  { key: 'custom.halle_stand', label: 'Halle / Stand', render: (r) => <Muted>{r.contact?.custom?.halle_stand}</Muted> },
+  { key: 'custom.budgetklasse', label: 'Budgetklasse', render: (r) => <Muted>{r.contact?.custom?.budgetklasse}</Muted> },
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [

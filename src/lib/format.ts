@@ -43,3 +43,7 @@ export const contactName = (c?: {
 
 export const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
+
+/** Telefonnummer fuer den Anruf: Hauptansprechpartner, sonst erste Person mit Nummer (z. B. Zentrale). */
+export const phoneOf = <T extends { phone?: string | null; is_primary?: boolean }>(persons?: T[] | null): string | null =>
+  primaryPerson(persons)?.phone || persons?.find((p) => p.phone)?.phone || null;

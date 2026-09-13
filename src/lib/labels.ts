@@ -31,6 +31,7 @@ export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
   meeting: 'Termin',
   note: 'Notiz',
   whatsapp: 'WhatsApp',
+  linkedin: 'LinkedIn',
   task: 'Aufgabe',
 };
 

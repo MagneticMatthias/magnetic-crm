@@ -45,3 +45,7 @@ migrate.env
 
 # GHCR-Token fuer nas-update.sh (nur auf dem NAS)
 ghcr.token
+
+# Messelisten-Exporte (lokal)
+*.numbers
+expo-real-*.json

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, StickyNote, Mail, CalendarDays } from 'lucide-react';
+import { Phone, StickyNote, Mail, CalendarDays, Share2 } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
 import type { ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
@@ -11,6 +11,7 @@ const TABS: { type: ActivityType; label: string; icon: typeof Phone }[] = [
   { type: 'note', label: 'Notiz', icon: StickyNote },
   { type: 'email', label: 'E-Mail', icon: Mail },
   { type: 'meeting', label: 'Termin', icon: CalendarDays },
+  { type: 'linkedin', label: 'LinkedIn', icon: Share2 },
 ];
 
 export default function ActivityComposer({

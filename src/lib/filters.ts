@@ -76,6 +76,18 @@ export const CONTACT_FIELDS: FieldDef[] = [
     get: (r: ContactWithPersons) => r.created_at },
   { key: 'deal_count', label: 'Verknüpfte Deals', type: 'number', group: 'Aktivität', icon: 'number',
     get: (r: ContactWithPersons) => r.deals?.length ?? 0 },
+  { key: 'custom.prio', label: 'Prio', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['1', '2', '3'], get: (r: ContactWithPersons) => r.custom?.prio ?? null },
+  { key: 'custom.kanal', label: 'Kanal (A = LinkedIn, B = Telefon)', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['A', 'B'], get: (r: ContactWithPersons) => r.custom?.kanal ?? null },
+  { key: 'custom.standtyp', label: 'Standtyp', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.standtyp ?? null },
+  { key: 'custom.halle_stand', label: 'Halle / Stand', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.halle_stand ?? null },
+  { key: 'custom.hauptaussteller', label: 'Hauptaussteller', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.hauptaussteller ?? null },
+  { key: 'custom.budgetklasse', label: 'Budgetklasse', type: 'text', group: 'Messe / Zusatzfelder', icon: 'money',
+    get: (r: ContactWithPersons) => r.custom?.budgetklasse ?? null },
 ];
 
 export const DEAL_FIELDS: FieldDef[] = [
@@ -116,6 +128,16 @@ export const DEAL_FIELDS: FieldDef[] = [
     get: (r: DealWithContact) => r.contact?.city ?? null },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', type: 'date', group: 'Aktivität', icon: 'date',
     get: (r: DealWithContact) => r.contact?.last_contacted_at ?? null },
+  { key: 'custom.prio', label: 'Prio', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['1', '2', '3'], get: (r: DealWithContact) => r.contact?.custom?.prio ?? null },
+  { key: 'custom.kanal', label: 'Kanal (A = LinkedIn, B = Telefon)', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['A', 'B'], get: (r: DealWithContact) => r.contact?.custom?.kanal ?? null },
+  { key: 'custom.standtyp', label: 'Standtyp', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: DealWithContact) => r.contact?.custom?.standtyp ?? null },
+  { key: 'custom.halle_stand', label: 'Halle / Stand', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: DealWithContact) => r.contact?.custom?.halle_stand ?? null },
+  { key: 'custom.budgetklasse', label: 'Budgetklasse', type: 'text', group: 'Messe / Zusatzfelder', icon: 'money',
+    get: (r: DealWithContact) => r.contact?.custom?.budgetklasse ?? null },
 ];
 
 const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();

@@ -1,4 +1,4 @@
-import { Phone, StickyNote, Mail, CalendarDays, MessageCircle, CheckSquare } from 'lucide-react';
+import { Phone, StickyNote, Mail, CalendarDays, MessageCircle, CheckSquare, Share2 } from 'lucide-react';
 import { ACTIVITY_TYPE_LABEL, CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
 import { dateTime, duration } from '@/lib/format';
 import { Badge } from '@/components/Badge';
@@ -6,7 +6,7 @@ import type { Activity, ActivityType } from '@/lib/types';
 
 const ICON: Record<ActivityType, typeof Phone> = {
   call: Phone, note: StickyNote, email: Mail,
-  meeting: CalendarDays, whatsapp: MessageCircle, task: CheckSquare,
+  meeting: CalendarDays, whatsapp: MessageCircle, linkedin: Share2, task: CheckSquare,
 };
 
 const POSITIVE = ['termin_vereinbart', 'abgeschlossen', 'erreicht'];

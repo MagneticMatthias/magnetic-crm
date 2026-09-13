@@ -23,11 +23,17 @@ import NoteEditor from '@/components/NoteEditor';
 import CallFlowCard from '@/components/CallFlowCard';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
-import { dateTime, dateOnly, eur, initials, personName, primaryPerson } from '@/lib/format';
+import { dateTime, dateOnly, eur, initials, personName, primaryPerson, phoneOf } from '@/lib/format';
 import type { ContactPerson } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
 
 type Tab = 'info' | 'activities' | 'notes';
+
+const CUSTOM_LABEL: Record<string, string> = {
+  prio: 'Prio', kanal: 'Kanal', standtyp: 'Standtyp', halle_stand: 'Halle / Stand',
+  hauptaussteller: 'Hauptaussteller', budgetklasse: 'Budgetklasse', geschaeftsfuehrung: 'Geschäftsführung',
+  fundstelle: 'Fundstelle', messe: 'Messe',
+};
 
 /* ------------------------- kleine Bausteine ------------------------- */
 
@@ -322,9 +328,9 @@ export default function DetailPanel({
 
           <div className="flex items-center overflow-hidden rounded-lg">
             <a
-              href={dialHref(primary?.phone)}
+              href={dialHref(phoneOf(contact?.persons))}
               onClick={() => { setTab('info'); setCallFlow({ autoStart: true }); }}
-              className={`btn-primary rounded-r-none ${primary?.phone ? '' : 'pointer-events-none opacity-50'}`}
+              className={`btn-primary rounded-r-none ${phoneOf(contact?.persons) ? '' : 'pointer-events-none opacity-50'}`}
             >
               <Phone size={15} /> <span className="hidden sm:inline">Anrufen</span>
             </a>
@@ -411,7 +417,7 @@ export default function DetailPanel({
               {callFlow && (
                 <CallFlowCard
                   name={personName(primary) || title}
-                  phone={primary?.phone}
+                  phone={phoneOf(contact?.persons)}
                   contactId={contactId}
                   dealId={mainDeal?.id}
                   stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
@@ -529,6 +535,16 @@ export default function DetailPanel({
                       <Field label="Opener-Kürzel" value={contact.opener_kuerzel} placeholder="z. B. MM"
                              onSave={(v) => run(() => updateContactFields(contactId, { opener_kuerzel: v }))} />
                     </div>
+                    {contact.custom && Object.values(contact.custom).some(Boolean) && (
+                      <dl className="mt-4 grid gap-x-4 gap-y-2 border-t border-line pt-4 text-sm sm:grid-cols-2">
+                        {Object.entries(contact.custom).filter(([, v]) => v).map(([k, v]) => (
+                          <div key={k} className="min-w-0">
+                            <dt className="text-xs text-muted">{CUSTOM_LABEL[k] ?? k}</dt>
+                            <dd className="break-words">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                   </Section>
                 );
 

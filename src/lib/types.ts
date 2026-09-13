@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'manager' | 'closer' | 'setter';
 export type PipelineKind =
   | 'setter' | 'closer' | 'upsell' | 'reaktivierung' | 'agentur' | 'training' | 'sonstige';
 export type DealStatus = 'offen' | 'gewonnen' | 'verloren';
-export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'whatsapp' | 'task';
+export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'whatsapp' | 'linkedin' | 'task';
 export type CallKind = 'opening' | 'setting' | 'closing' | 'followup';
 export type CallOutcome =
   | 'erreicht' | 'nicht_erreicht' | 'mailbox' | 'falsche_nummer'
@@ -66,6 +66,7 @@ export type Contact = {
   notes: string | null;
   owner_id: string | null;
   last_contacted_at: string | null;
+  custom?: Record<string, string | null>;
   created_at: string;
   updated_at: string;
 };
