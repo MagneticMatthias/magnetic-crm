@@ -37,6 +37,11 @@ export default async function DashboardPage() {
   const closedMonth = wonMonth.length + lostMonth.length;
 
   const openValue = open.reduce((a, d) => a + Number(d.value || 0), 0);
+  const openHint = (pipelines ?? [])
+    .map((p) => ({ name: p.name, n: open.filter((d) => d.pipeline_id === p.id).length }))
+    .filter((x) => x.n > 0)
+    .map((x) => `${x.n} ${x.name}`)
+    .join(' · ') || '0 Deals';
   const wonValue = wonMonth.reduce((a, d) => a + Number(d.value || 0), 0);
 
   const firstPipeline = pipelines?.[0];
@@ -83,7 +88,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-6 p-4 sm:p-6">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Stat label="Offene Pipeline" value={eur(openValue)} hint={`${open.length} Deals`} />
+          <Stat label="Offene Pipeline" value={eur(openValue)} hint={openHint} />
           <Stat label="Gewonnen (Monat)" value={eur(wonValue)} hint={`${wonMonth.length} Abschlüsse`} tone="win" />
           <Stat
             label="Abschlussquote (Monat)"
