@@ -36,7 +36,7 @@ const companyName = (s) => {
   if (!v) return null;
   v = v.split(/\r?\n/)[0].trim();
   if (v.length > 60) {
-    const cut = v.search(/[,.;:–]\s|\s\d{4,5}\s/);
+    const cut = v.search(/[.;:–]\s|\s\d{4,5}\s/);
     if (cut > 3) v = v.slice(0, cut).trim();
   }
   return v.replace(/[,.;:–\s]+$/, '') || null;
