@@ -28,6 +28,19 @@ const sb = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), {
 async function must(p, label) { const { data, error } = await p; if (error) throw new Error(`${label}: ${error.message}`); return data; }
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const clean = (s) => (s == null ? null : String(s).trim() || null);
+// Firmenname: nur die erste Zeile; hängt in der Zelle noch Ort oder
+// Beschreibung dran („Mamma Group 1010 Wien, Österreich Mamma Group
+// entwickelt …"), wird am ersten Satz-/Kommatrenner abgeschnitten.
+const companyName = (s) => {
+  let v = clean(s);
+  if (!v) return null;
+  v = v.split(/\r?\n/)[0].trim();
+  if (v.length > 60) {
+    const cut = v.search(/[,.;:–]\s|\s\d{4,5}\s/);
+    if (cut > 3) v = v.slice(0, cut).trim();
+  }
+  return v.replace(/[,.;:–\s]+$/, '') || null;
+};
 const cleanUrl = (u) => (u ? String(u).trim().replace(/^https?:\/\//, '').replace(/\/$/, '') : null);
 
 const STAGES = [
@@ -95,12 +108,24 @@ async function main() {
 
   const existing = await must(sb.from('contacts').select('id, company').eq('org_id', org.id), 'contacts');
   const byCompany = new Map(existing.map((c) => [norm(c.company), c.id]));
-  const stats = { contacts: 0, persons: 0, deals: 0, linkedin: 0, notes: 0, skipped: 0 };
+  const stats = { contacts: 0, persons: 0, deals: 0, linkedin: 0, notes: 0, skipped: 0, repaired: 0 };
 
   for (const r of rows) {
-    const company = clean(r.firma);
+    const company = companyName(r.firma);
     if (!company) continue;
-    if (byCompany.has(norm(company))) { stats.skipped++; continue; }
+    // Bereits importiert (auch mit dem alten, überlangen Namen): Name reparieren, sonst überspringen.
+    const rawKey = norm(clean(r.firma));
+    if (byCompany.has(norm(company)) || byCompany.has(rawKey)) {
+      const oldId = byCompany.get(rawKey);
+      if (oldId && rawKey !== norm(company)) {
+        stats.repaired++;
+        if (!DRY) {
+          await must(sb.from('contacts').update({ company }).eq('id', oldId), 'contact repair');
+          await must(sb.from('deals').update({ title: company }).eq('contact_id', oldId).eq('source', listName), 'deal repair');
+        }
+      }
+      stats.skipped++; continue;
+    }
 
     const contactId = crypto.randomUUID();
     const custom = {
