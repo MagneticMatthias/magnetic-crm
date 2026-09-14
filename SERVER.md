@@ -21,17 +21,14 @@ reicht - von jedem Rechner aus.
 | `SUPABASE_ANON_KEY` | derselbe Publishable Key (fuer Keep-alive) |
 | `SUPABASE_DB_URL` | Session-Pooler-URL (fuer das Backup) |
 
-### 2. Token fuer das NAS (liest private Images aus GHCR)
+### 2. Image oeffentlich machen (dann braucht das NAS keinen Token)
 
-GitHub -> Settings -> Developer settings -> Personal access tokens -> **Tokens (classic)**
--> Generate new token -> Haken nur bei **read:packages** -> erzeugen -> Token kopieren.
+GitHub -> Profil -> **Packages** -> `magnetic-crm` -> **Package settings** ->
+Danger Zone -> **Change visibility** -> Public. Das Image enthaelt nur den
+oeffentlichen Publishable Key, keine Geheimnisse.
 
-Auf dem NAS-Ordner (vom Mac aus, Laufwerk verbunden):
-
-```bash
-cd /Volumes/01_Büro_Matthias/18_Magnetic_CRM
-echo 'ghp_DEIN_TOKEN' > ghcr.token
-```
+(Alternative: Token mit `read:packages` als Datei `ghcr.token` neben
+`nas-update.sh` ablegen.)
 
 ### 3. Aufgabenplaner im DSM
 
