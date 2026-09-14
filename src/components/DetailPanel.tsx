@@ -14,6 +14,7 @@ import { PANEL_CARDS, DEFAULT_PANEL_LAYOUT, SETTER_FIELDS, type PanelCardKey } f
 import { Badge } from '@/components/Badge';
 import { logActivity, createTask } from '@/app/actions/crm';
 import { sendDealEmail, fillTemplate, senderOptions } from '@/app/actions/email';
+import { dealAnProjekttool } from '@/app/actions/projekttool';
 import EmailComposer from '@/components/EmailComposer';
 import ActivityComposer from '@/components/ActivityComposer';
 import Timeline from '@/components/Timeline';
@@ -279,7 +280,7 @@ export default function DetailPanel({
   const [loading, setLoading] = useState(true);
   const [menu, setMenu] = useState(false);
   const [callFlow, setCallFlow] = useState<null | { autoStart: boolean }>(null);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
 
   const reload = useCallback(async () => {
     const d = await loadContactDetail(contactId, dealId);
@@ -303,6 +304,7 @@ export default function DetailPanel({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const [handover, setHandover] = useState<string | null>(null);
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => { await fn(); await reload(); });
 
@@ -570,6 +572,26 @@ export default function DetailPanel({
                       Angelegt {dateOnly(mainDeal.created_at)} · Status {mainDeal.status}
                       {mainDeal.won_at ? ` · gewonnen ${dateOnly(mainDeal.won_at)}` : ''}
                     </p>
+                    {mainDeal.status === 'gewonnen' && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-2/60 p-3 text-sm">
+                        {mainDeal.custom?.projekttool_id ? (
+                          <span className="flex items-center gap-1.5 text-win"><UserCheck size={14} /> Im Projekttool angelegt</span>
+                        ) : (
+                          <>
+                            <span className="text-muted">Auftrag gewonnen:</span>
+                            <button type="button" className="btn-primary !py-1.5 text-[13px]" disabled={pending}
+                                    onClick={() => startTransition(async () => {
+                                      const r = await dealAnProjekttool(mainDeal.id);
+                                      setHandover(r.ok ? null : r.error);
+                                      if (r.ok) await reload();
+                                    })}>
+                              <ExternalLink size={14} /> Projekt im Projekttool anlegen
+                            </button>
+                          </>
+                        )}
+                        {handover && <span className="w-full text-xs text-lose">{handover}</span>}
+                      </div>
+                    )}
                   </Section>
                 ) : null;
 

@@ -149,3 +149,19 @@ pm2 save
 ```
 
 Reverse Proxy wie oben, Port 3010.
+
+## Übergabe ans Projekttool
+
+Gewonnene Deals bekommen im Deal-Panel den Knopf „Projekt im Projekttool anlegen".
+Der CRM-Server meldet sich dafür als normaler Nutzer an der PocketBase an und legt
+Kunde (falls neu), Projekt, Betrag und die Notizen als Verlauf an.
+
+In der `.env` auf dem NAS (neben den Supabase-Werten) ergänzen:
+
+```
+PROJEKTTOOL_URL=http://magnetic-nas:8090
+PROJEKTTOOL_EMAIL=deine@login-mail.de
+PROJEKTTOOL_PASSWORT=dein-projekttool-passwort
+```
+
+Danach den Container neu starten. Ohne diese drei Werte zeigt der Knopf einen Hinweis.
