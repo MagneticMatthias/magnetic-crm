@@ -7,7 +7,7 @@ import { setDealStage } from '@/app/actions/records';
 import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
 import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
-import { dialHref, useDialScheme } from '@/lib/dial';
+import { dialHref, splitPhones, useDialScheme } from '@/lib/dial';
 import type { ContactDeal, ContactWithPersons, DealWithContact } from '@/lib/types';
 
 export type ColumnDef<T> = {
@@ -46,12 +46,23 @@ const PrimaryPerson = ({ persons }: { persons: { first_name: string | null; last
   );
 };
 
+/** Stehen mehrere Nummern im Feld, wird jede ein eigener Link. */
 const Tel = ({ value }: { value: string | null | undefined }) => {
   const scheme = useDialScheme();
-  return value
-    ? <a href={dialHref(value, scheme)} className="text-brand hover:underline"
-         onClick={(e) => e.stopPropagation()}>{value}</a>
-    : <span className="text-muted">–</span>;
+  const nummern = splitPhones(value);
+  if (!nummern.length) return <span className="text-muted">–</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {nummern.map((n, i) => (
+        <span key={`${n.number}-${i}`} className="inline-flex items-center gap-1.5">
+          {i > 0 && <span className="text-muted">·</span>}
+          <a href={dialHref(n.number, scheme)} className="text-brand hover:underline"
+             title={n.label ? `${n.label}: ${n.number}` : n.number}
+             onClick={(e) => e.stopPropagation()}>{n.number}</a>
+        </span>
+      ))}
+    </span>
+  );
 };
 
 /**
@@ -59,16 +70,67 @@ const Tel = ({ value }: { value: string | null | undefined }) => {
  * im eingestellten Schema (tel/callto/sip). Der Klick oeffnet NICHT die
  * Detailansicht - beim Durchtelefonieren will man nur waehlen.
  */
+const knopfCls =
+  'inline-grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand transition hover:bg-brand hover:text-white';
+
 const DialButton = ({ value }: { value: string | null | undefined }) => {
   const scheme = useDialScheme();
-  const href = dialHref(value, scheme);
-  if (!href) return <span className="text-muted" title="Keine Nummer hinterlegt">–</span>;
+  const nummern = splitPhones(value);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  if (!nummern.length) return <span className="text-muted" title="Keine Nummer hinterlegt">–</span>;
+
+  if (nummern.length === 1) {
+    const n = nummern[0].number;
+    return (
+      <a href={dialHref(n, scheme)} onClick={(e) => e.stopPropagation()}
+         title={`${n} anrufen`} aria-label={`${n} anrufen`} className={knopfCls}>
+        <Phone size={14} />
+      </a>
+    );
+  }
+
+  // Mehrere Nummern: erst fragen, welche. Sonst wuerde die Telefon-App eine
+  // zusammengesetzte Nummer bekommen, die es nicht gibt.
+  const oeffnen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const hoehe = nummern.length * 36 + 12;
+    setPos({
+      top: window.innerHeight - r.bottom < hoehe ? Math.max(8, r.top - hoehe - 4) : r.bottom + 4,
+      left: Math.min(r.left, window.innerWidth - 248),
+    });
+  };
+
   return (
-    <a href={href} onClick={(e) => e.stopPropagation()}
-       title={`${value} anrufen`} aria-label={`${value} anrufen`}
-       className="inline-grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand transition hover:bg-brand hover:text-white">
-      <Phone size={14} />
-    </a>
+    <>
+      <button type="button" onClick={oeffnen} className={`${knopfCls} relative`}
+              title={`${nummern.length} Nummern – auswählen`} aria-label="Nummer zum Anrufen wählen">
+        <Phone size={14} />
+        <span className="absolute -right-0.5 -top-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-brand text-[9px] font-semibold text-white">
+          {nummern.length}
+        </span>
+      </button>
+
+      {pos && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setPos(null); }} />
+          <div className="card fixed z-50 w-60 p-1.5 shadow-xl"
+               onClick={(e) => e.stopPropagation()}
+               style={{ top: pos.top, left: pos.left }}>
+            {nummern.map((n, i) => (
+              <a key={`${n.number}-${i}`} href={dialHref(n.number, scheme)} onClick={() => setPos(null)}
+                 className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] hover:bg-surface-2">
+                <Phone size={13} className="shrink-0 text-brand" />
+                <span className="min-w-0 flex-1 truncate">{n.number}</span>
+                {n.label && <span className="shrink-0 text-xs text-muted">{n.label}</span>}
+              </a>
+            ))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 };
 
