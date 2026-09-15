@@ -137,10 +137,15 @@ function StageCell({ dealId, stageId, stage, pipelineId }: {
         <ChevronDown size={12} className="shrink-0 text-muted" />
       </button>
 
+      {/* React leitet Klicks aus einem Portal am DOM vorbei an die Tabellen-
+          zeile weiter - ohne stopPropagation ginge nach der Auswahl zusaetzlich
+          die Detailansicht auf. */}
       {pos && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setPos(null)} />
+          <div className="fixed inset-0 z-40"
+               onClick={(e) => { e.stopPropagation(); setPos(null); }} />
           <div className="card fixed z-50 max-h-80 w-60 overflow-y-auto p-1.5 shadow-xl"
+               onClick={(e) => e.stopPropagation()}
                style={{ top: pos.top, left: pos.left }}>
             {stages.map((s) => (
               <button key={s.id} type="button" onClick={() => waehlen(s.id)}
