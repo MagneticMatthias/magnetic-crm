@@ -105,6 +105,37 @@ export async function deleteDeal(formData: FormData) {
 
 /* ----------------------------- Aktivitäten ---------------------------- */
 
+type Db = Awaited<ReturnType<typeof ctx>>['supabase'];
+
+/**
+ * Wiedervorlage aus dem Formular: wird als Aufgabe angelegt und bleibt mit
+ * Kontakt und Deal verknuepft, damit sie aus der Aufgabenliste heraus
+ * auffindbar ist. Ohne `followup_at` passiert nichts.
+ */
+async function createFollowUp(
+  supabase: Db, orgId: string, profileId: string,
+  formData: FormData, contactId: string | null, dealId: string | null,
+) {
+  const at = str(formData, 'followup_at');
+  if (!at) return;
+
+  let titel = str(formData, 'followup_title');
+  if (!titel) {
+    let firma: string | null = null;
+    if (contactId) {
+      const { data: c } = await supabase.from('contacts').select('company').eq('id', contactId).single();
+      firma = c?.company ?? null;
+    }
+    titel = firma ? `Nochmal anrufen: ${firma}` : 'Nochmal anrufen';
+  }
+
+  await supabase.from('tasks').insert({
+    org_id: orgId, contact_id: contactId, deal_id: dealId,
+    assignee_id: profileId, created_by: profileId,
+    title: titel, due_at: at, priority: 2,
+  });
+}
+
 export async function logActivity(formData: FormData) {
   const { supabase, orgId, profile } = await ctx();
   const type = String(formData.get('type') || 'note');
@@ -135,25 +166,7 @@ export async function logActivity(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  // Wiedervorlage: wird als Aufgabe angelegt und bleibt mit Kontakt und
-  // Deal verknuepft, damit sie aus der Aufgabenliste heraus auffindbar ist.
-  const followupAt = str(formData, 'followup_at');
-  if (followupAt) {
-    let titel = str(formData, 'followup_title');
-    if (!titel) {
-      let firma: string | null = null;
-      if (contactId) {
-        const { data: c } = await supabase.from('contacts').select('company').eq('id', contactId).single();
-        firma = c?.company ?? null;
-      }
-      titel = firma ? `Nochmal anrufen: ${firma}` : 'Nochmal anrufen';
-    }
-    await supabase.from('tasks').insert({
-      org_id: orgId, contact_id: contactId, deal_id: dealId,
-      assignee_id: profile.id, created_by: profile.id,
-      title: titel, due_at: followupAt, priority: 2,
-    });
-  }
+  await createFollowUp(supabase, orgId, profile.id, formData, contactId, dealId);
 
   // Ergebnis kann die Phase weiterschieben (z. B. Termin vereinbart)
   const nextStage = str(formData, 'next_stage_id');
@@ -172,7 +185,7 @@ export async function logActivity(formData: FormData) {
 }
 
 export async function updateActivity(formData: FormData) {
-  const { supabase } = await ctx();
+  const { supabase, orgId, profile } = await ctx();
   const type = String(formData.get('type') || 'note');
   const minutes = Number(str(formData, 'duration_minutes') ?? 0);
   const datum = str(formData, 'date');
@@ -188,6 +201,15 @@ export async function updateActivity(formData: FormData) {
     ...(datum ? { occurred_at: new Date(`${datum}T${str(formData, 'time') ?? '12:00'}`).toISOString() } : {}),
   }).eq('id', String(formData.get('id')));
   if (error) throw new Error(error.message);
+
+  // Auch beim Nachtragen laesst sich eine Wiedervorlage setzen. Kontakt und
+  // Deal stehen nicht im Formular, sie kommen aus der Aktivitaet selbst.
+  if (str(formData, 'followup_at')) {
+    const { data: a } = await supabase
+      .from('activities').select('contact_id, deal_id').eq('id', String(formData.get('id'))).single();
+    await createFollowUp(supabase, orgId, profile.id, formData, a?.contact_id ?? null, a?.deal_id ?? null);
+  }
+
   refreshAll();
 }
 

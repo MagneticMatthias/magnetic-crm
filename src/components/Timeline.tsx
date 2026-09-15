@@ -9,6 +9,7 @@ import { dateTime, duration } from '@/lib/format';
 import { Badge } from '@/components/Badge';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { updateActivity, deleteActivity } from '@/app/actions/crm';
+import FollowUpPicker from '@/components/FollowUpPicker';
 import type { Activity, ActivityType, CallKind, CallOutcome } from '@/lib/types';
 
 const ICON: Record<ActivityType, typeof Phone> = {
@@ -112,6 +113,8 @@ function EditForm({ a, onDone }: { a: Row; onDone: () => void }) {
           <textarea name="body" className="input min-h-24" defaultValue={a.body ?? ''} />
         )}
       </div>
+
+      <FollowUpPicker />
 
       <div className="flex flex-wrap items-center gap-2">
         <button className="btn-primary !py-2 text-[13px]">Speichern</button>
