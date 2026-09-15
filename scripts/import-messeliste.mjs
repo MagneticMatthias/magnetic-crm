@@ -44,7 +44,8 @@ const companyName = (s) => {
 const cleanUrl = (u) => (u ? String(u).trim().replace(/^https?:\/\//, '').replace(/\/$/, '') : null);
 
 const STAGES = [
-  ['Offen', 5, '#64748b'], ['LinkedIn angeschrieben', 15, '#0a66c2'], ['Niemand rangegangen', 10, '#a1a1aa'],
+  ['Offen', 5, '#64748b'], ['LinkedIn angeschrieben', 15, '#0a66c2'], ['E-Mail geschrieben', 15, '#8b5cf6'],
+  ['Niemand rangegangen', 10, '#a1a1aa'],
   ['Nochmal anrufen', 20, '#f59e0b'], ['Gatekeeper erreicht', 25, '#0ea5e9'], ['Entscheider erreicht', 50, '#6366f1'],
   ['Erfolg', 100, '#22c55e', 'won'], ['An Gatekeeper gescheitert', 0, '#f97316', 'lost'],
   ['Entscheider kein Interesse', 0, '#ef4444', 'lost'],

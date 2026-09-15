@@ -286,6 +286,37 @@ export async function updateStage(formData: FormData) {
   revalidatePath('/pipelines');
 }
 
+/**
+ * Phase eine Position nach oben oder unten. Nummeriert die ganze Pipeline
+ * neu durch, damit doppelte Positionen aus Altbestaenden nicht zu einer
+ * zufaelligen Reihenfolge fuehren.
+ */
+export async function moveStage(formData: FormData) {
+  const { supabase } = await ctx();
+  const id = String(formData.get('id'));
+  const dir = formData.get('dir') === 'up' ? -1 : 1;
+
+  const { data: stage } = await supabase
+    .from('pipeline_stages').select('id, pipeline_id').eq('id', id).single();
+  if (!stage) return;
+
+  const { data: list } = await supabase
+    .from('pipeline_stages').select('id').eq('pipeline_id', stage.pipeline_id).order('position');
+  if (!list) return;
+
+  const i = list.findIndex((s) => s.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+
+  const neu = [...list];
+  [neu[i], neu[j]] = [neu[j], neu[i]];
+  for (const [pos, s] of neu.entries()) {
+    await supabase.from('pipeline_stages').update({ position: pos }).eq('id', s.id);
+  }
+  revalidatePath('/einstellungen');
+  revalidatePath('/pipelines');
+}
+
 export async function deleteStage(formData: FormData) {
   const { supabase } = await ctx();
   const { error } = await supabase.from('pipeline_stages').delete().eq('id', String(formData.get('id')));

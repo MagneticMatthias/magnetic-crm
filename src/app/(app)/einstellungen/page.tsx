@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/ui';
 import { Badge } from '@/components/Badge';
 import {
   createPipeline, renamePipeline, deletePipeline,
-  createStage, updateStage, deleteStage,
+  createStage, updateStage, deleteStage, moveStage,
   updateTeamMember, joinOrganization,
 } from '@/app/actions/crm';
 import { saveEmailSettings, createEmailTemplate, deleteEmailTemplate } from '@/app/actions/email';
@@ -11,7 +11,7 @@ import { smtpConfigured } from '@/lib/mailer';
 import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
 import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
-import { Trash2 } from 'lucide-react';
+import { Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import DangerZone from '@/components/DangerZone';
 import DialSettings from '@/components/DialSettings';
 
@@ -96,6 +96,17 @@ export default async function SettingsPage() {
                   <form key={s.id} action={updateStage}
                         className="flex flex-wrap items-end gap-2 rounded-lg border border-line p-2.5">
                     <input type="hidden" name="id" value={s.id} />
+                    {/* Reihenfolge: bestimmt die Reiter ueber der Tabelle */}
+                    <div className="flex flex-col gap-0.5 pb-1">
+                      <button formAction={moveStage} name="dir" value="up" aria-label="Phase nach oben"
+                              className="grid h-4 w-6 place-items-center rounded border border-line text-muted hover:bg-surface-2 hover:text-brand">
+                        <ChevronUp size={12} />
+                      </button>
+                      <button formAction={moveStage} name="dir" value="down" aria-label="Phase nach unten"
+                              className="grid h-4 w-6 place-items-center rounded border border-line text-muted hover:bg-surface-2 hover:text-brand">
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
                     <div className="min-w-[140px] flex-1">
                       <label className="label">Phase</label>
                       <input name="name" className="input" defaultValue={s.name} />
