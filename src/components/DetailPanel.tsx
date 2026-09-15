@@ -641,7 +641,8 @@ export default function DetailPanel({
 
                 if (key === 'tasks') return (
                   <Section key={key} title="Aufgaben" defaultOpen={false}>
-                    <TaskComposer action={createTask} contactId={contactId} />
+                    <TaskComposer action={async (fd) => { await createTask(fd); await reload(); }}
+                                  contactId={contactId} dealId={mainDeal?.id} />
                     <div className="mt-3"><TaskList tasks={data?.tasks ?? []} /></div>
                   </Section>
                 );

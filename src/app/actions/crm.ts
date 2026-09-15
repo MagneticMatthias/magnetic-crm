@@ -196,6 +196,17 @@ export async function createTask(formData: FormData) {
   refreshAll();
 }
 
+export async function updateTask(formData: FormData) {
+  const { supabase } = await ctx();
+  const { error } = await supabase.from('tasks').update({
+    title: str(formData, 'title') ?? 'Aufgabe',
+    due_at: str(formData, 'due_at'),
+    priority: Number(str(formData, 'priority') ?? 2),
+  }).eq('id', String(formData.get('id')));
+  if (error) throw new Error(error.message);
+  refreshAll();
+}
+
 export async function toggleTask(formData: FormData) {
   const { supabase } = await ctx();
   const id = String(formData.get('id'));
