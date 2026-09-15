@@ -8,7 +8,7 @@ import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
 import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
 import { dialHref, useDialScheme } from '@/lib/dial';
-import type { ContactWithPersons, DealWithContact } from '@/lib/types';
+import type { ContactDeal, ContactWithPersons, DealWithContact } from '@/lib/types';
 
 export type ColumnDef<T> = {
   key: string;
@@ -96,12 +96,15 @@ const Kanal = ({ value }: { value: string | null | undefined }) =>
  * den ganzen Kontakt aufzuklappen. Das Menue haengt per Portal am Body,
  * sonst wuerde die Tabellenzelle es abschneiden.
  */
-function StageCell({ dealId, stageId, stage }: {
+function StageCell({ dealId, stageId, stage, pipelineId }: {
   dealId: string;
   stageId: string | null | undefined;
   stage: { name: string; color: string } | null | undefined;
+  /** Nur die Phasen dieser Pipeline anbieten (Kontaktliste kennt mehrere). */
+  pipelineId?: string | null;
 }) {
-  const stages = useStages();
+  const alle = useStages();
+  const stages = pipelineId ? alle?.filter((s) => s.pipeline_id === pipelineId) : alle;
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -155,6 +158,10 @@ function StageCell({ dealId, stageId, stage }: {
   );
 }
 
+/** Der Vorgang, der den Kontakt beschreibt: ein offener zuerst, sonst der erste. */
+const hauptDeal = (deals?: ContactDeal[]): ContactDeal | undefined =>
+  deals?.find((d) => d.status === 'offen') ?? deals?.[0];
+
 const prioNum = (v: string | null | undefined) => (v ? Number(v) || 9 : 9);
 const pname = (persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[] | null) =>
   personName(primaryPerson(persons)) || '';
@@ -175,6 +182,11 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'deals', label: 'Verknüpft', width: 110, render: (r) => (
       <span className="inline-flex items-center gap-1.5 text-muted"><ListTree size={13} /> {r.deals?.length ?? 0} Deals</span>
     ), sortValue: (r) => r.deals?.length ?? 0 },
+  { key: 'stage', label: 'Phase', width: 190, render: (r) => {
+      const d = hauptDeal(r.deals);
+      return d ? <StageCell dealId={d.id} stageId={d.stage_id} stage={d.stage} pipelineId={d.pipeline_id} /> : <span className="text-muted">–</span>;
+    }, sortValue: (r) => hauptDeal(r.deals)?.stage?.name ?? '' },
+  { key: 'pipeline', label: 'Pipeline', width: 150, render: (r) => <Muted>{hauptDeal(r.deals)?.pipeline?.name}</Muted>, sortValue: (r) => hauptDeal(r.deals)?.pipeline?.name ?? '' },
   { key: 'lead_source', label: 'Leadherkunft', width: 160, render: (r) => <Muted>{r.lead_source}</Muted>, sortValue: (r) => r.lead_source ?? '' },
   { key: 'city', label: 'Stadt', width: 130, render: (r) => <Muted>{r.city}</Muted>, sortValue: (r) => r.city ?? '' },
   { key: 'postal_code', label: 'PLZ', width: 80, render: (r) => <Muted>{r.postal_code}</Muted>, sortValue: (r) => r.postal_code ?? '' },
@@ -197,7 +209,7 @@ export const CONTACT_DEFAULT_COLUMNS = [
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'company', label: 'Firmenname', width: 240, render: (r) => <Muted>{r.contact?.company}</Muted>, sortValue: (r) => r.contact?.company ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
-  { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} />, sortValue: (r) => r.stage?.name ?? '' },
+  { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} pipelineId={r.pipeline_id} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },
   { key: 'custom.kanal', label: 'Kanal', width: 120, render: (r) => <Kanal value={r.contact?.custom?.kanal} />, sortValue: (r) => r.contact?.custom?.kanal ?? 'Z' },
   { key: 'persons', label: 'Ansprechpartner', width: 200, render: (r) => <PrimaryPerson persons={r.contact?.persons} />, sortValue: (r) => pname(r.contact?.persons) },

@@ -71,9 +71,18 @@ export type Contact = {
   updated_at: string;
 };
 
+export type ContactDeal = {
+  id: string;
+  status: DealStatus;
+  stage_id: string | null;
+  pipeline_id: string | null;
+  stage?: { name: string; color: string } | null;
+  pipeline?: { name: string } | null;
+};
+
 export type ContactWithPersons = Contact & {
   persons: ContactPerson[];
-  deals?: { id: string }[];
+  deals?: ContactDeal[];
 };
 
 export type Note = {

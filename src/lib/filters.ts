@@ -44,7 +44,15 @@ const primary = (c: ContactWithPersons | null | undefined) =>
 const joined = (c: ContactWithPersons | null | undefined, key: 'first_name' | 'last_name' | 'email' | 'phone') =>
   (c?.persons ?? []).map((p) => p[key]).filter(Boolean).join(' ') || null;
 
+/** Vorgang, der den Kontakt beschreibt: ein offener zuerst, sonst der erste. */
+const hauptDeal = (r: ContactWithPersons) =>
+  r.deals?.find((d) => d.status === 'offen') ?? r.deals?.[0];
+
 export const CONTACT_FIELDS: FieldDef[] = [
+  { key: 'stage', label: 'Phase', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'list',
+    get: (r: ContactWithPersons) => hauptDeal(r)?.stage?.name ?? null },
+  { key: 'pipeline', label: 'Pipeline', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'list',
+    get: (r: ContactWithPersons) => hauptDeal(r)?.pipeline?.name ?? null },
   { key: 'person_count', label: 'Ansprechpartner-Anzahl', type: 'number', group: 'Kontakt-Eigenschaften', icon: 'list',
     get: (r: ContactWithPersons) => r.persons?.length ?? 0 },
   { key: 'first_name', label: 'Vorname', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'text',

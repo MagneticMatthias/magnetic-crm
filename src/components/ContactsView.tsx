@@ -3,19 +3,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import RecordTable from '@/components/table/RecordTable';
+import { StagesProvider } from '@/components/table/StagesContext';
 import { CONTACT_COLUMNS, CONTACT_DEFAULT_COLUMNS } from '@/components/table/columns';
 import DetailPanel, { NewContactButton } from '@/components/DetailPanel';
 import { CONTACT_FIELDS } from '@/lib/filters';
 import { createContactQuick, saveFilter, deleteContacts } from '@/app/actions/records';
-import type { ContactWithPersons, FilterDefinition, SavedFilter } from '@/lib/types';
+import type { ContactWithPersons, FilterDefinition, SavedFilter, Stage } from '@/lib/types';
 import { useViewing } from '@/lib/presence';
 
 export default function ContactsView({
-  rows, filter, savedFilters, initialOpen,
+  rows, filter, savedFilters, stages, initialOpen,
 }: {
   rows: ContactWithPersons[];
   filter: FilterDefinition | null;
   savedFilters: SavedFilter[];
+  stages: Stage[];
   initialOpen?: string | null;
 }) {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function ContactsView({
 
   return (
     <>
+      <StagesProvider value={stages}>
       <RecordTable
         rows={rows}
         columns={CONTACT_COLUMNS}
@@ -47,6 +50,7 @@ export default function ContactsView({
           }} />
         }
       />
+      </StagesProvider>
 
       {openId && (
         <DetailPanel

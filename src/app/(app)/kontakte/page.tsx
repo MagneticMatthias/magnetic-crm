@@ -1,7 +1,7 @@
 import { ctx } from '@/lib/ctx';
 import ContactsView from '@/components/ContactsView';
 import { applyFilter, CONTACT_FIELDS, parseFilterParam } from '@/lib/filters';
-import type { ContactWithPersons, SavedFilter } from '@/lib/types';
+import type { ContactWithPersons, SavedFilter, Stage } from '@/lib/types';
 
 export default async function ContactsPage({
   searchParams,
@@ -9,14 +9,18 @@ export default async function ContactsPage({
   const { q, filter, open } = await searchParams;
   const { supabase, orgId } = await ctx();
 
-  const [{ data: contacts }, { data: saved }] = await Promise.all([
+  const [{ data: contacts }, { data: saved }, { data: stages }] = await Promise.all([
     supabase
       .from('contacts')
-      .select('*, persons:contact_persons(*), deals(id)')
+      .select('*, persons:contact_persons(*), deals(id, status, stage_id, pipeline_id, stage:pipeline_stages(name, color), pipeline:pipelines(name))')
       .eq('org_id', orgId)
       .order('updated_at', { ascending: false })
       .limit(1000),
     supabase.from('saved_filters').select('*').eq('org_id', orgId).eq('entity', 'contacts').order('name'),
+    // Alle Phasen aller Pipelines: die Phasen-Spalte laesst sich damit auch
+    // in der Kontaktliste direkt umstellen. Die Zeilensicherheit begrenzt
+    // das bereits auf die eigene Organisation.
+    supabase.from('pipeline_stages').select('*').order('position'),
   ]);
 
   let rows = (contacts ?? []) as ContactWithPersons[];
@@ -46,6 +50,7 @@ export default async function ContactsPage({
         rows={rows}
         filter={def}
         savedFilters={(saved ?? []) as SavedFilter[]}
+        stages={(stages ?? []) as Stage[]}
         initialOpen={open ?? null}
       />
     </div>
