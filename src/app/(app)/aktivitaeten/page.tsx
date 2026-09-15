@@ -85,7 +85,7 @@ export default async function ActivitiesPage({
           </div>
         )}
 
-        <Timeline activities={rows} />
+        <Timeline activities={rows} editable />
       </div>
     </>
   );

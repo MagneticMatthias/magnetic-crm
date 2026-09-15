@@ -659,7 +659,7 @@ export default function DetailPanel({
                 stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
                 phone={primary?.phone}
               />
-              <Timeline activities={data?.activities ?? []} />
+              <Timeline activities={data?.activities ?? []} editable onChanged={reload} />
             </>
           ) : (
             <>

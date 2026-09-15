@@ -171,6 +171,26 @@ export async function logActivity(formData: FormData) {
   if (contactId) revalidatePath(`/kontakte/${contactId}`);
 }
 
+export async function updateActivity(formData: FormData) {
+  const { supabase } = await ctx();
+  const type = String(formData.get('type') || 'note');
+  const minutes = Number(str(formData, 'duration_minutes') ?? 0);
+  const datum = str(formData, 'date');
+
+  const { error } = await supabase.from('activities').update({
+    call_kind: type === 'call' ? str(formData, 'call_kind') : null,
+    outcome: type === 'call' ? str(formData, 'outcome') : null,
+    answered_by: type === 'call' ? str(formData, 'answered_by') : null,
+    duration_seconds: type === 'call' && minutes > 0 ? Math.round(minutes * 60) : null,
+    subject: str(formData, 'subject'),
+    body: str(formData, 'body'),
+    // Fehlt das Datum, bleibt der alte Zeitpunkt stehen.
+    ...(datum ? { occurred_at: new Date(`${datum}T${str(formData, 'time') ?? '12:00'}`).toISOString() } : {}),
+  }).eq('id', String(formData.get('id')));
+  if (error) throw new Error(error.message);
+  refreshAll();
+}
+
 export async function deleteActivity(formData: FormData) {
   const { supabase } = await ctx();
   await supabase.from('activities').delete().eq('id', String(formData.get('id')));
