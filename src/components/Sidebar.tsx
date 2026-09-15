@@ -13,14 +13,18 @@ import type { Pipeline } from '@/lib/types';
 type Item = { href: string; label: string; icon: typeof Users };
 
 const SECTIONS: { title: string; items: Item[] }[] = [
-  { title: 'Home', items: [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
+  // Aufgaben stehen oben: sie sind der taegliche Einstieg, nicht die
+  // letzte Zeile unter den Werkzeugen.
+  { title: 'Home', items: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/aufgaben', label: 'Aufgaben', icon: CheckSquare },
+  ] },
   {
     title: 'Vertrieb',
     items: [
       { href: '/kontakte', label: 'Kontakte', icon: Users },
       { href: '/pipelines', label: 'Pipelines', icon: ListTree },
       { href: '/dialer', label: 'Power Dialer', icon: PhoneForwarded },
-      { href: '/aufgaben', label: 'Aufgaben', icon: CheckSquare },
     ],
   },
   {

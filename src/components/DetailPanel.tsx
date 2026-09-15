@@ -429,6 +429,18 @@ export default function DetailPanel({
                   onClose={() => setCallFlow(null)}
                 />
               )}
+              {/* Angeheftete Notizen zuerst: das Anpinnen sortierte sie bisher
+                  nur im Reiter Notizen nach oben, wo man sie nicht sieht. */}
+              {(data?.notes ?? []).filter((n) => n.pinned).map((n) => (
+                <div key={n.id} className="card border-brand/40 bg-brand-soft/30 p-4">
+                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand">
+                    <Pin size={12} /> Angeheftet
+                  </p>
+                  <div className="prose-sm text-sm [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
+                       dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.body) }} />
+                </div>
+              ))}
+
               {layout.map((key) => {
                 const def = PANEL_CARDS.find((c) => c.key === key);
                 if (!def) return null;

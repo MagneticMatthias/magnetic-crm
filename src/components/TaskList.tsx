@@ -85,17 +85,36 @@ function TaskRow({ t, now, showContext }: { t: Row; now: number; showContext?: b
         </span>
       </button>
 
-      <form action={deleteTask}>
+      <form action={deleteTask} className="shrink-0">
         <input type="hidden" name="id" value={t.id} />
-        <button className="text-muted hover:text-lose" aria-label="Aufgabe löschen">
-          <Trash2 size={15} />
+        <button className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-lose/10 hover:text-lose"
+                aria-label="Aufgabe löschen" title="Aufgabe löschen"
+                onClick={(e) => { if (!window.confirm('Diese Aufgabe löschen?')) e.preventDefault(); }}>
+          <Trash2 size={16} />
         </button>
       </form>
     </li>
   );
 }
 
-export default function TaskList({ tasks, showContext }: { tasks: Row[]; showContext?: boolean }) {
+const TAG = 86400000;
+
+/** Zeitblock einer Aufgabe, gemessen am Ende des heutigen Tages. */
+function zeitBlock(t: Row, heuteEnde: number): string {
+  if (t.done) return 'Erledigt';
+  if (!t.due_at) return 'Ohne Frist';
+  const d = new Date(t.due_at).getTime();
+  if (d < heuteEnde - TAG) return 'Überfällig';
+  if (d < heuteEnde) return 'Heute';
+  if (d < heuteEnde + 6 * TAG) return 'Diese Woche';
+  return 'Später';
+}
+
+const BLOCK_REIHE = ['Überfällig', 'Heute', 'Diese Woche', 'Später', 'Ohne Frist', 'Erledigt'];
+
+export default function TaskList({
+  tasks, showContext, groupBy = 'kontakt',
+}: { tasks: Row[]; showContext?: boolean; groupBy?: 'kontakt' | 'zeit' }) {
   const now = nowMs();
   if (!tasks.length) return <p className="px-1 py-4 text-sm text-muted">Keine offenen Aufgaben.</p>;
 
@@ -105,6 +124,38 @@ export default function TaskList({ tasks, showContext }: { tasks: Row[]; showCon
       <ul className="space-y-2">
         {tasks.map((t) => <TaskRow key={t.id} t={t} now={now} />)}
       </ul>
+    );
+  }
+
+  if (groupBy === 'zeit') {
+    const heute = new Date(now);
+    heute.setHours(23, 59, 59, 999);
+    const heuteEnde = heute.getTime();
+
+    const bloecke = new Map<string, Row[]>();
+    for (const t of tasks) {
+      const key = zeitBlock(t, heuteEnde);
+      bloecke.set(key, [...(bloecke.get(key) ?? []), t]);
+    }
+
+    return (
+      <div className="space-y-5">
+        {BLOCK_REIHE.filter((b) => bloecke.get(b)?.length).map((b) => (
+          <div key={b}>
+            <div className="mb-1.5 flex items-center gap-2 px-1">
+              <span className={`text-sm font-semibold ${b === 'Überfällig' ? 'text-lose' : b === 'Heute' ? 'text-warn' : 'text-muted'}`}>
+                {b}
+              </span>
+              <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">
+                {bloecke.get(b)!.length}
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {bloecke.get(b)!.map((t) => <TaskRow key={t.id} t={t} now={now} showContext />)}
+            </ul>
+          </div>
+        ))}
+      </div>
     );
   }
 

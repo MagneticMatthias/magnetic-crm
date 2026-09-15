@@ -215,7 +215,8 @@ export async function updateActivity(formData: FormData) {
 
 export async function deleteActivity(formData: FormData) {
   const { supabase } = await ctx();
-  await supabase.from('activities').delete().eq('id', String(formData.get('id')));
+  const { error } = await supabase.from('activities').delete().eq('id', String(formData.get('id')));
+  if (error) throw new Error(`Aktivitaet konnte nicht geloescht werden: ${error.message}`);
   refreshAll();
 }
 
@@ -250,9 +251,23 @@ export async function updateTask(formData: FormData) {
 }
 
 export async function toggleTask(formData: FormData) {
-  const { supabase } = await ctx();
+  const { supabase, orgId, profile } = await ctx();
   const id = String(formData.get('id'));
   const done = formData.get('done') === 'true';
+
+  // Beim Abhaken einen Eintrag in die Zeitleiste schreiben. Sonst fehlt in
+  // der Geschichte des Kontakts genau das, was tatsaechlich getan wurde.
+  if (!done) {
+    const { data: t } = await supabase
+      .from('tasks').select('title, contact_id, deal_id').eq('id', id).single();
+    if (t?.contact_id || t?.deal_id) {
+      await supabase.from('activities').insert({
+        org_id: orgId, contact_id: t.contact_id, deal_id: t.deal_id, user_id: profile.id,
+        type: 'task', subject: `Erledigt: ${t.title}`, occurred_at: new Date().toISOString(),
+      });
+    }
+  }
+
   await supabase.from('tasks')
     .update({ done: !done, done_at: !done ? new Date().toISOString() : null })
     .eq('id', id);
@@ -261,7 +276,8 @@ export async function toggleTask(formData: FormData) {
 
 export async function deleteTask(formData: FormData) {
   const { supabase } = await ctx();
-  await supabase.from('tasks').delete().eq('id', String(formData.get('id')));
+  const { error } = await supabase.from('tasks').delete().eq('id', String(formData.get('id')));
+  if (error) throw new Error(`Aufgabe konnte nicht geloescht werden: ${error.message}`);
   refreshAll();
 }
 

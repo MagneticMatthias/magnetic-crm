@@ -13,8 +13,10 @@ type Row = Task & {
 
 export default async function TasksPage({
   searchParams,
-}: { searchParams: Promise<{ f?: string }> }) {
-  const { f } = await searchParams;
+}: { searchParams: Promise<{ f?: string; g?: string }> }) {
+  const { f, g } = await searchParams;
+  // Standard ist die zeitliche Sicht: sie beantwortet "was steht an".
+  const nachFirma = g === 'firma';
   const { supabase, orgId, profile } = await ctx();
   const mine = f !== 'alle';
 
@@ -45,8 +47,15 @@ export default async function TasksPage({
   return (
     <>
       <PageHeader title="Aufgaben" subtitle={mine ? 'Deine Aufgaben' : 'Alle Aufgaben im Team'}>
-        <a href="/aufgaben" className={mine ? 'btn-primary' : 'btn-ghost'}>Meine</a>
-        <a href="/aufgaben?f=alle" className={mine ? 'btn-ghost' : 'btn-primary'}>Team</a>
+        <a href={`/aufgaben?${new URLSearchParams({ ...(nachFirma ? { g: 'firma' } : {}) })}`}
+           className={mine ? 'btn-primary' : 'btn-ghost'}>Meine</a>
+        <a href={`/aufgaben?${new URLSearchParams({ f: 'alle', ...(nachFirma ? { g: 'firma' } : {}) })}`}
+           className={mine ? 'btn-ghost' : 'btn-primary'}>Team</a>
+        <span className="mx-1 h-6 w-px bg-line" />
+        <a href={`/aufgaben?${new URLSearchParams({ ...(mine ? {} : { f: 'alle' }) })}`}
+           className={nachFirma ? 'btn-ghost' : 'btn-primary'}>Nach Termin</a>
+        <a href={`/aufgaben?${new URLSearchParams({ ...(mine ? {} : { f: 'alle' }), g: 'firma' })}`}
+           className={nachFirma ? 'btn-primary' : 'btn-ghost'}>Nach Firma</a>
       </PageHeader>
 
       <div className="space-y-6 p-4 sm:p-6">
@@ -57,7 +66,7 @@ export default async function TasksPage({
         </div>
 
         <TaskComposer action={createTask} team={(team ?? []) as Profile[]} />
-        <TaskList tasks={rows} showContext />
+        <TaskList tasks={rows} showContext groupBy={nachFirma ? 'kontakt' : 'zeit'} />
       </div>
     </>
   );
