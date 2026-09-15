@@ -108,6 +108,54 @@ export async function deleteDeal(formData: FormData) {
 type Db = Awaited<ReturnType<typeof ctx>>['supabase'];
 
 /**
+ * Welche Phase eine Aktivitaet nahelegt. Namen, weil die Phasen zur
+ * Laufzeit umbenannt werden koennen - passt keiner, passiert nichts.
+ */
+function phaseAusAktivitaet(formData: FormData, type: string): string[] {
+  if (type === 'linkedin') return ['LinkedIn angeschrieben'];
+  if (type === 'email') return ['E-Mail geschrieben'];
+  if (type !== 'call') return [];
+
+  const wer = str(formData, 'answered_by');
+  if (wer === 'entscheider') return ['Entscheider erreicht'];
+  if (wer === 'gatekeeper') return ['Gatekeeper erreicht'];
+
+  const ergebnis = str(formData, 'outcome');
+  if (ergebnis === 'nicht_erreicht' || ergebnis === 'mailbox') return ['Niemand rangegangen'];
+  if (ergebnis === 'wiedervorlage') return ['Nochmal anrufen'];
+  if (ergebnis === 'kein_interesse') return ['Entscheider kein Interesse'];
+  return [];
+}
+
+/**
+ * Die Phase der Aktivitaet nachziehen. Zwei Sicherungen: es wird nur nach
+ * VORNE geschoben (Position in der Pipeline), und gewonnene oder verlorene
+ * Phasen werden nie automatisch gesetzt. Damit kann ein nachtraeglich
+ * erfasster Anruf keinen weit fortgeschrittenen Deal zurueckwerfen.
+ */
+async function phaseNachziehen(supabase: Db, dealId: string, namen: string[]) {
+  if (!namen.length) return;
+
+  const { data: deal } = await supabase
+    .from('deals').select('pipeline_id, stage_id, status').eq('id', dealId).single();
+  if (!deal?.pipeline_id || deal.status !== 'offen') return;
+
+  const { data: stages } = await supabase
+    .from('pipeline_stages').select('id, name, position, is_won, is_lost')
+    .eq('pipeline_id', deal.pipeline_id).order('position');
+  if (!stages?.length) return;
+
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const ziel = stages.find((s) => namen.some((n) => gleich(s.name, n)));
+  if (!ziel || ziel.is_won || ziel.is_lost) return;
+
+  const jetzt = stages.find((s) => s.id === deal.stage_id);
+  if (jetzt && jetzt.position >= ziel.position) return;
+
+  await supabase.from('deals').update({ stage_id: ziel.id }).eq('id', dealId);
+}
+
+/**
  * Wiedervorlage aus dem Formular: wird als Aufgabe angelegt und bleibt mit
  * Kontakt und Deal verknuepft, damit sie aus der Aufgabenliste heraus
  * auffindbar ist. Ohne `followup_at` passiert nichts.
@@ -168,7 +216,9 @@ export async function logActivity(formData: FormData) {
 
   await createFollowUp(supabase, orgId, profile.id, formData, contactId, dealId);
 
-  // Ergebnis kann die Phase weiterschieben (z. B. Termin vereinbart)
+  // Eine ausdrueckliche Wahl im Formular gewinnt immer. Fehlt sie, zieht
+  // die Phase der Aktivitaet nach: wer angeschrieben wurde, steht nicht
+  // mehr auf "Offen".
   const nextStage = str(formData, 'next_stage_id');
   if (nextStage && dealId) {
     const { data: stage } = await supabase
@@ -177,6 +227,8 @@ export async function logActivity(formData: FormData) {
       await supabase.from('deals')
         .update({ stage_id: nextStage, pipeline_id: stage.pipeline_id }).eq('id', dealId);
     }
+  } else if (dealId) {
+    await phaseNachziehen(supabase, dealId, phaseAusAktivitaet(formData, type));
   }
 
   refreshAll();

@@ -98,7 +98,7 @@ export default function ActivityComposer({
               <div>
                 <label className="label" htmlFor="next_stage_id">Deal danach verschieben nach</label>
                 <select id="next_stage_id" name="next_stage_id" className="input" defaultValue="">
-                  <option value="">– Phase unverändert –</option>
+                  <option value="">– automatisch aus dem Ergebnis –</option>
                   {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>

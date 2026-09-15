@@ -154,7 +154,7 @@ export default function CallFlowCard({
             <div>
               <label className="label" htmlFor="cf-stage">Deal danach verschieben nach</label>
               <select id="cf-stage" name="next_stage_id" className="input" defaultValue="">
-                <option value="">– Phase unverändert –</option>
+                <option value="">– automatisch aus dem Ergebnis –</option>
                 {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
