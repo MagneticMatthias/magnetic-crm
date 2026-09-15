@@ -44,16 +44,17 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="card">
-      <div className="flex items-center justify-between gap-2 px-4 py-3.5 sm:px-5 sm:py-4">
-        <h3 className="text-[15px] font-semibold">{title}</h3>
-        <div className="flex items-center gap-2">
-          {action}
-          <button type="button" onClick={() => setOpen((o) => !o)}
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-surface-2"
-                  aria-label={open ? 'Einklappen' : 'Ausklappen'}>
+      {/* Die ganze Kopfzeile klappt auf, nicht nur der Pfeil. Ein etwaiger
+          Knopf rechts bleibt daneben stehen, damit er nicht im Knopf haengt. */}
+      <div className="flex items-center gap-2 pr-4 sm:pr-5">
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-3.5 pl-4 text-left transition hover:bg-surface-2/60 sm:py-4 sm:pl-5">
+          <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold">{title}</h3>
+          <span className="grid h-7 w-7 shrink-0 place-items-center text-muted">
             {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-        </div>
+          </span>
+        </button>
+        {action}
       </div>
       {open && <div className="px-4 pb-4 sm:px-5 sm:pb-5">{children}</div>}
     </section>

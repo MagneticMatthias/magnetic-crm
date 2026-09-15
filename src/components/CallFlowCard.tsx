@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Phone, Monitor, RefreshCw, Calendar, Clock, Bold, Italic, Underline, Strikethrough, List, ListOrdered } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
+import FollowUpPicker from '@/components/FollowUpPicker';
 import type { CallKind, CallOutcome, Stage } from '@/lib/types';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -159,6 +160,8 @@ export default function CallFlowCard({
             </div>
           )}
         </div>
+
+        <FollowUpPicker />
 
         <div>
           <p className="label">Notizen</p>

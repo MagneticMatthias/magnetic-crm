@@ -1,12 +1,13 @@
 import { toggleTask, deleteTask } from '@/app/actions/crm';
 import { dateTime } from '@/lib/format';
-import { Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Trash2, Building2 } from 'lucide-react';
 import type { Task } from '@/lib/types';
 import { nowMs } from '@/lib/clock';
 
 type Row = Task & {
   deal?: { id: string; title: string } | null;
-  contact?: { id: string; first_name: string | null; last_name: string | null } | null;
+  contact?: { id: string; company: string | null } | null;
 };
 
 const PRIORITY = ['', 'Hoch', 'Mittel', 'Niedrig'];
@@ -40,7 +41,15 @@ export default function TaskList({ tasks, showContext }: { tasks: Row[]; showCon
                   {t.due_at ? dateTime(t.due_at) : 'ohne Frist'}
                 </span>
                 <span>· {PRIORITY[t.priority] ?? 'Mittel'}</span>
-                {showContext && t.deal && <span className="truncate">· {t.deal.title}</span>}
+                {showContext && t.contact && (
+                  <Link href={`/kontakte?open=${t.contact.id}`}
+                        className="inline-flex min-w-0 items-center gap-1 text-brand hover:underline"
+                        title="Kontakt öffnen">
+                    <Building2 size={12} className="shrink-0" />
+                    <span className="truncate">{t.contact.company || 'Kontakt'}</span>
+                  </Link>
+                )}
+                {showContext && !t.contact && t.deal && <span className="truncate">· {t.deal.title}</span>}
               </div>
             </div>
 

@@ -6,7 +6,10 @@ import { createTask } from '@/app/actions/crm';
 import type { Profile, Task } from '@/lib/types';
 import { nowMs, nowDate } from '@/lib/clock';
 
-type Row = Task & { deal: { id: string; title: string } | null };
+type Row = Task & {
+  deal: { id: string; title: string } | null;
+  contact: { id: string; company: string | null } | null;
+};
 
 export default async function TasksPage({
   searchParams,
@@ -17,7 +20,7 @@ export default async function TasksPage({
 
   let query = supabase
     .from('tasks')
-    .select('*, deal:deals(id, title)')
+    .select('*, deal:deals(id, title), contact:contacts(id, company)')
     .eq('org_id', orgId)
     .order('done')
     .order('due_at', { nullsFirst: false })

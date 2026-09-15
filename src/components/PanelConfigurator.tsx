@@ -37,10 +37,11 @@ function CardRow({
       }`}>
         <Icon size={15} />
       </span>
-      <div className="min-w-0 flex-1">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+              className="min-w-0 flex-1 rounded-lg px-1 py-1 text-left transition hover:bg-surface-2">
         <p className="text-sm font-medium">{def.title}</p>
         {open && <p className="mt-0.5 text-xs text-win">{def.description}</p>}
-      </div>
+      </button>
       <button type="button" onClick={onRemove}
               className="grid h-8 w-8 place-items-center rounded-lg border border-line text-lose hover:bg-lose/10"
               aria-label="Karte ausblenden">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Phone, StickyNote, Mail, CalendarDays, Share2 } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
+import FollowUpPicker from '@/components/FollowUpPicker';
 import type { ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
 
@@ -109,6 +110,8 @@ export default function ActivityComposer({
             <input id="subject" name="subject" className="input" placeholder="Kurzer Betreff" />
           </div>
         )}
+
+        <FollowUpPicker />
 
         <div>
           <label className="label" htmlFor="body">Notiz</label>

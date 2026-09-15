@@ -109,11 +109,13 @@ export async function logActivity(formData: FormData) {
   const { supabase, orgId, profile } = await ctx();
   const type = String(formData.get('type') || 'note');
   const minutes = Number(str(formData, 'duration_minutes') ?? 0);
+  const contactId = str(formData, 'contact_id');
+  const dealId = str(formData, 'deal_id');
 
   const { error } = await supabase.from('activities').insert({
     org_id: orgId,
-    deal_id: str(formData, 'deal_id'),
-    contact_id: str(formData, 'contact_id'),
+    deal_id: dealId,
+    contact_id: contactId,
     user_id: profile.id,
     type,
     call_kind: type === 'call' ? str(formData, 'call_kind') : null,
@@ -133,9 +135,28 @@ export async function logActivity(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
+  // Wiedervorlage: wird als Aufgabe angelegt und bleibt mit Kontakt und
+  // Deal verknuepft, damit sie aus der Aufgabenliste heraus auffindbar ist.
+  const followupAt = str(formData, 'followup_at');
+  if (followupAt) {
+    let titel = str(formData, 'followup_title');
+    if (!titel) {
+      let firma: string | null = null;
+      if (contactId) {
+        const { data: c } = await supabase.from('contacts').select('company').eq('id', contactId).single();
+        firma = c?.company ?? null;
+      }
+      titel = firma ? `Nochmal anrufen: ${firma}` : 'Nochmal anrufen';
+    }
+    await supabase.from('tasks').insert({
+      org_id: orgId, contact_id: contactId, deal_id: dealId,
+      assignee_id: profile.id, created_by: profile.id,
+      title: titel, due_at: followupAt, priority: 2,
+    });
+  }
+
   // Ergebnis kann die Phase weiterschieben (z. B. Termin vereinbart)
   const nextStage = str(formData, 'next_stage_id');
-  const dealId = str(formData, 'deal_id');
   if (nextStage && dealId) {
     const { data: stage } = await supabase
       .from('pipeline_stages').select('pipeline_id').eq('id', nextStage).single();
@@ -147,7 +168,6 @@ export async function logActivity(formData: FormData) {
 
   refreshAll();
   if (dealId) revalidatePath(`/deals/${dealId}`);
-  const contactId = str(formData, 'contact_id');
   if (contactId) revalidatePath(`/kontakte/${contactId}`);
 }
 
