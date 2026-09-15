@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, LayoutList } from 'lucide-react';
 import RecordTable from '@/components/table/RecordTable';
+import { StagesProvider } from '@/components/table/StagesContext';
 import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS } from '@/components/table/columns';
 import DetailPanel from '@/components/DetailPanel';
 import PanelConfigurator from '@/components/PanelConfigurator';
@@ -72,6 +73,7 @@ export default function PipelineView({
         })}
       </div>
 
+      <StagesProvider value={stages}>
       <RecordTable
         rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
         columns={DEAL_COLUMNS}
@@ -97,6 +99,7 @@ export default function PipelineView({
           </>
         }
       />
+      </StagesProvider>
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Neuer Deal" wide>
         <DealForm

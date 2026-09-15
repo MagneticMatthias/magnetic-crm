@@ -1,10 +1,13 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Users, ListTree, ExternalLink } from 'lucide-react';
+import { useState, useTransition, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
+import { setDealStage } from '@/app/actions/records';
+import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
 import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
-import { dialHref } from '@/lib/dial';
+import { dialHref, useDialScheme } from '@/lib/dial';
 import type { ContactWithPersons, DealWithContact } from '@/lib/types';
 
 export type ColumnDef<T> = {
@@ -43,10 +46,31 @@ const PrimaryPerson = ({ persons }: { persons: { first_name: string | null; last
   );
 };
 
-const Tel = ({ value }: { value: string | null | undefined }) =>
-  value ? <a href={dialHref(value)} className="text-brand hover:underline"
-              onClick={(e) => e.stopPropagation()}>{value}</a>
-        : <span className="text-muted">–</span>;
+const Tel = ({ value }: { value: string | null | undefined }) => {
+  const scheme = useDialScheme();
+  return value
+    ? <a href={dialHref(value, scheme)} className="text-brand hover:underline"
+         onClick={(e) => e.stopPropagation()}>{value}</a>
+    : <span className="text-muted">–</span>;
+};
+
+/**
+ * Anruf-Knopf: kleines Telefonsymbol, waehlt die hinterlegte Nummer direkt
+ * im eingestellten Schema (tel/callto/sip). Der Klick oeffnet NICHT die
+ * Detailansicht - beim Durchtelefonieren will man nur waehlen.
+ */
+const DialButton = ({ value }: { value: string | null | undefined }) => {
+  const scheme = useDialScheme();
+  const href = dialHref(value, scheme);
+  if (!href) return <span className="text-muted" title="Keine Nummer hinterlegt">–</span>;
+  return (
+    <a href={href} onClick={(e) => e.stopPropagation()}
+       title={`${value} anrufen`} aria-label={`${value} anrufen`}
+       className="inline-grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand transition hover:bg-brand hover:text-white">
+      <Phone size={14} />
+    </a>
+  );
+};
 
 const Web = ({ value }: { value: string | null | undefined }) => {
   if (!value) return <span className="text-muted">–</span>;
@@ -67,6 +91,70 @@ const LastContact = ({ value }: { value: string | null | undefined }) =>
 const Kanal = ({ value }: { value: string | null | undefined }) =>
   value ? <Badge>{value === 'A' ? 'A · LinkedIn' : 'B · Telefon'}</Badge> : <span className="text-muted">–</span>;
 
+/**
+ * Phase in der Tabelle: ein Tippen oeffnet direkt die Phasenliste, ohne
+ * den ganzen Kontakt aufzuklappen. Das Menue haengt per Portal am Body,
+ * sonst wuerde die Tabellenzelle es abschneiden.
+ */
+function StageCell({ dealId, stageId, stage }: {
+  dealId: string;
+  stageId: string | null | undefined;
+  stage: { name: string; color: string } | null | undefined;
+}) {
+  const stages = useStages();
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const label = stage ? <Badge color={stage.color}>{stage.name}</Badge> : <span className="text-muted">–</span>;
+  if (!stages?.length) return label;
+
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const hoehe = Math.min(stages.length * 36 + 12, 320);
+    const platzUnten = window.innerHeight - r.bottom;
+    setPos({
+      top: platzUnten < hoehe ? Math.max(8, r.top - hoehe - 4) : r.bottom + 4,
+      left: Math.min(r.left, window.innerWidth - 248),
+    });
+  };
+
+  const waehlen = (id: string) => {
+    setPos(null);
+    if (id === stageId) return;
+    startTransition(() => setDealStage(dealId, id));
+  };
+
+  return (
+    <>
+      <button type="button" onClick={openMenu} disabled={pending}
+              title="Phase ändern"
+              className="inline-flex max-w-full items-center gap-1 rounded-md text-left hover:bg-surface-2 disabled:opacity-50">
+        <span className="truncate">{label}</span>
+        <ChevronDown size={12} className="shrink-0 text-muted" />
+      </button>
+
+      {pos && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setPos(null)} />
+          <div className="card fixed z-50 max-h-80 w-60 overflow-y-auto p-1.5 shadow-xl"
+               style={{ top: pos.top, left: pos.left }}>
+            {stages.map((s) => (
+              <button key={s.id} type="button" onClick={() => waehlen(s.id)}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
+                <span className="flex-1 truncate">{s.name}</span>
+                {s.id === stageId && <Check size={13} className="shrink-0 text-brand" />}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 const prioNum = (v: string | null | undefined) => (v ? Number(v) || 9 : 9);
 const pname = (persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[] | null) =>
   personName(primaryPerson(persons)) || '';
@@ -81,6 +169,7 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'person_count', label: 'Anzahl Personen', width: 160, render: (r) => <PersonChip count={r.persons?.length ?? 0} />, sortValue: (r) => r.persons?.length ?? 0 },
   { key: 'email', label: 'E-Mail', width: 220, render: (r) => <Muted>{primaryPerson(r.persons)?.email}</Muted>, sortValue: (r) => primaryPerson(r.persons)?.email ?? '' },
   { key: 'phone', label: 'Telefon', width: 170, render: (r) => <Tel value={phoneOf(r.persons)} />, sortValue: (r) => phoneOf(r.persons) ?? '' },
+  { key: 'dial', label: 'Anrufen', width: 90, render: (r) => <DialButton value={phoneOf(r.persons)} />, sortValue: (r) => (phoneOf(r.persons) ? 0 : 1) },
   { key: 'website', label: 'Website', width: 200, render: (r) => <Web value={r.website} />, sortValue: (r) => r.website ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.last_contacted_at} />, sortValue: (r) => r.last_contacted_at ?? '' },
   { key: 'deals', label: 'Verknüpft', width: 110, render: (r) => (
@@ -108,11 +197,12 @@ export const CONTACT_DEFAULT_COLUMNS = [
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'company', label: 'Firmenname', width: 240, render: (r) => <Muted>{r.contact?.company}</Muted>, sortValue: (r) => r.contact?.company ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
-  { key: 'stage', label: 'Phase', width: 190, render: (r) => r.stage ? <Badge color={r.stage.color}>{r.stage.name}</Badge> : <span className="text-muted">–</span>, sortValue: (r) => r.stage?.name ?? '' },
+  { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },
   { key: 'custom.kanal', label: 'Kanal', width: 120, render: (r) => <Kanal value={r.contact?.custom?.kanal} />, sortValue: (r) => r.contact?.custom?.kanal ?? 'Z' },
   { key: 'persons', label: 'Ansprechpartner', width: 200, render: (r) => <PrimaryPerson persons={r.contact?.persons} />, sortValue: (r) => pname(r.contact?.persons) },
   { key: 'phone', label: 'Telefon', width: 170, render: (r) => <Tel value={phoneOf(r.contact?.persons)} />, sortValue: (r) => phoneOf(r.contact?.persons) ?? '' },
+  { key: 'dial', label: 'Anrufen', width: 90, render: (r) => <DialButton value={phoneOf(r.contact?.persons)} />, sortValue: (r) => (phoneOf(r.contact?.persons) ? 0 : 1) },
   { key: 'email', label: 'E-Mail', width: 220, render: (r) => <Muted>{primaryPerson(r.contact?.persons)?.email}</Muted>, sortValue: (r) => primaryPerson(r.contact?.persons)?.email ?? '' },
   { key: 'website', label: 'Website', width: 200, render: (r) => <Web value={r.contact?.website} />, sortValue: (r) => r.contact?.website ?? '' },
   { key: 'next_step', label: 'Nächster Schritt', width: 220, render: (r) => <Muted>{r.next_step}</Muted>, sortValue: (r) => r.next_step ?? '' },
@@ -130,5 +220,5 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [
-  'company', 'custom.prio', 'stage', 'last_contacted_at', 'custom.kanal', 'persons', 'phone', 'website',
+  'company', 'custom.prio', 'stage', 'last_contacted_at', 'custom.kanal', 'persons', 'phone', 'dial', 'website',
 ];

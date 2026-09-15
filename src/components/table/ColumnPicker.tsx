@@ -9,10 +9,10 @@ export default function ColumnPicker<T>({
 }: { columns: ColumnDef<T>[]; visible: string[]; onChange: (keys: string[]) => void }) {
   const [open, setOpen] = useState(false);
 
+  // Anhaengen statt neu aufbauen: sonst verwirft jedes Haekchen die
+  // Reihenfolge, die per Drag & Drop eingestellt wurde.
   const toggle = (key: string) =>
-    onChange(visible.includes(key)
-      ? visible.filter((k) => k !== key)
-      : columns.filter((c) => c.key === key || visible.includes(c.key)).map((c) => c.key));
+    onChange(visible.includes(key) ? visible.filter((k) => k !== key) : [...visible, key]);
 
   return (
     <div className="relative">
