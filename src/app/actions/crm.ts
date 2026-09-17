@@ -113,7 +113,10 @@ type Db = Awaited<ReturnType<typeof ctx>>['supabase'];
  */
 function phaseAusAktivitaet(formData: FormData, type: string): string[] {
   if (type === 'linkedin') return ['LinkedIn angeschrieben'];
-  if (type === 'email') return ['E-Mail geschrieben'];
+  // E-Mail bewusst NICHT: von Hand protokolliert steht nicht fest, wer
+  // geschrieben hat, und eine eingehende Absage ist nicht "E-Mail
+  // geschrieben". Fuer selbst verschickte Mails setzt sendDealEmail die
+  // Phase, dort ist die Richtung bekannt.
   if (type !== 'call') return [];
 
   const wer = str(formData, 'answered_by');
@@ -133,7 +136,7 @@ function phaseAusAktivitaet(formData: FormData, type: string): string[] {
  * Phasen werden nie automatisch gesetzt. Damit kann ein nachtraeglich
  * erfasster Anruf keinen weit fortgeschrittenen Deal zurueckwerfen.
  */
-async function phaseNachziehen(supabase: Db, dealId: string, namen: string[]) {
+export async function phaseNachziehen(supabase: Db, dealId: string, namen: string[]) {
   if (!namen.length) return;
 
   const { data: deal } = await supabase

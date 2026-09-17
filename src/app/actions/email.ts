@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { ctx, str } from '@/lib/ctx';
+import { phaseNachziehen } from '@/app/actions/crm';
 import { sendMail, smtpConfigured, renderTemplate } from '@/lib/mailer';
 
 export async function sendDealEmail(formData: FormData) {
@@ -49,6 +50,9 @@ export async function sendDealEmail(formData: FormData) {
     subject,
     body: `An ${to}${str(formData, 'cc') ? `\nCc ${str(formData, 'cc')}` : ''}\n\n${body}`,
   });
+
+  // Hier ist die Richtung bekannt: wir haben geschrieben.
+  if (dealId) await phaseNachziehen(supabase, dealId, ['E-Mail geschrieben']);
 
   if (dealId) revalidatePath(`/deals/${dealId}`);
   if (contactId) revalidatePath(`/kontakte/${contactId}`);
