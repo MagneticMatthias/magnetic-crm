@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { RefreshCw, Inbox } from 'lucide-react';
-import { syncMailNow } from '@/app/actions/mail';
+import { RefreshCw, Inbox, RotateCcw } from 'lucide-react';
+import { syncMailNow, resyncMail } from '@/app/actions/mail';
 import { dateTime } from '@/lib/format';
 
 type State = { folder: string; last_run_at: string | null; last_error: string | null; imported: number };
@@ -42,6 +42,15 @@ export default function MailSyncCard({ configured, user, states }: { configured:
                     setMeldung(r.error ? `Fehler: ${r.error}` : `${r.imported} neue Mail(s) übernommen.`);
                   })}>
             <RefreshCw size={14} className={pending ? 'animate-spin' : ''} /> {pending ? 'Gleiche ab …' : 'Jetzt abgleichen'}
+          </button>
+          <button type="button" className="btn-ghost" disabled={pending}
+                  title="Fortschrittsmarke zurücksetzen und die letzten 60 Tage neu einlesen. Gelöschte Mails kommen zurück, vorhandene werden nicht doppelt."
+                  onClick={() => start(async () => {
+                    setMeldung(null);
+                    const r = await resyncMail();
+                    setMeldung(r.error ? `Fehler: ${r.error}` : `Neu eingelesen, ${r.imported} Mail(s) übernommen.`);
+                  })}>
+            <RotateCcw size={14} /> Letzte 60 Tage neu einlesen
           </button>
           {meldung && <span className={`text-sm ${meldung.startsWith('Fehler') ? 'text-lose' : 'text-muted'}`}>{meldung}</span>}
         </div>

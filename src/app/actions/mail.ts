@@ -38,6 +38,17 @@ export async function syncMailNow(): Promise<SyncResult & { error?: string }> {
 }
 
 /**
+ * Fortschrittsmarke zuruecksetzen und die letzten Wochen neu einlesen.
+ * Vorhandene Mails bleiben ueber die Message-ID einmalig; nur Geloeschtes
+ * kommt zurueck.
+ */
+export async function resyncMail(): Promise<SyncResult & { error?: string }> {
+  const { supabase, orgId } = await ctx();
+  await supabase.from('mail_sync_state').delete().eq('org_id', orgId);
+  return syncMailNow();
+}
+
+/**
  * Selbst geschriebene Mails ziehen die Phase nach ("E-Mail geschrieben").
  * Nur fuer die gerade importierten Ausgaenge, die einen Deal haben.
  */
