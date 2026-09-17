@@ -20,7 +20,10 @@ const ICON: Record<ActivityType, typeof Phone> = {
 const POSITIVE = ['termin_vereinbart', 'abgeschlossen', 'erreicht'];
 const NEGATIVE = ['kein_interesse', 'verloren', 'falsche_nummer', 'no_show'];
 
-type Row = Activity & { user?: { full_name: string | null; email: string | null } | null };
+type Row = Activity & {
+  user?: { full_name: string | null; email: string | null } | null;
+  direction?: 'in' | 'out' | null;
+};
 
 /** Notizen aus dem Call-Flow sind Rich-Text, alles andere einfacher Text. */
 const istHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
@@ -185,6 +188,9 @@ function Inhalt({
           {a.type === 'call' && a.call_kind ? CALL_KIND_LABEL[a.call_kind] : ACTIVITY_TYPE_LABEL[a.type]}
         </span>
         {a.outcome && <Badge tone={tone as 'win' | 'lose' | 'muted'}>{CALL_OUTCOME_LABEL[a.outcome]}</Badge>}
+        {a.type === 'email' && a.direction && (
+          <Badge tone={a.direction === 'in' ? 'warn' : 'muted'}>{a.direction === 'in' ? 'Eingang' : 'Ausgang'}</Badge>
+        )}
         {a.duration_seconds ? <span className="text-xs text-muted">{duration(a.duration_seconds)}</span> : null}
         {a.answered_by && <Badge>{a.answered_by === 'gatekeeper' ? 'Gatekeeper' : 'Entscheider'}</Badge>}
         <span className="ml-auto text-xs text-muted">{dateTime(a.occurred_at)}</span>

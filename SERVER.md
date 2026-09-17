@@ -162,3 +162,60 @@ PROJEKTTOOL_PASSWORT=dein-projekttool-passwort
 ```
 
 Danach den Container neu starten. Ohne diese drei Werte zeigt der Knopf einen Hinweis.
+
+
+## Zugangsdaten auf dem NAS: Datei statt Skript
+
+Werte im Aufgabenplaner-Skript sind im DSM fuer jeden Admin im Klartext
+sichtbar. Besser: eine Datei, die nur root lesen kann, und das Skript
+verweist nur darauf.
+
+1. Im File Station einen Ordner anlegen, z. B. `docker/magnetic-crm`.
+2. Darin eine Datei `crm.env` mit TextEdit (reiner Text) anlegen:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://....supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+PROJEKTTOOL_URL=http://magnetic-nas:8090
+PROJEKTTOOL_EMAIL=...
+PROJEKTTOOL_PASSWORT=...
+SMTP_HOST=smtp.ionos.de
+SMTP_PORT=587
+SMTP_USER=deine@magnetic-medien.de
+SMTP_PASS=...
+IMAP_HOST=imap.ionos.de
+IMAP_PORT=993
+```
+
+3. Aufgabenplaner-Skript (Benutzer root) ersetzen durch:
+
+```bash
+#!/bin/bash
+ENV=/volume1/docker/magnetic-crm/crm.env
+chmod 600 "$ENV"
+IMG=ghcr.io/magneticmatthias/magnetic-crm:latest
+docker pull -q $IMG
+NEU=$(docker image inspect --format '{{.Id}}' $IMG)
+ALT=$(docker inspect --format '{{.Image}}' magnetic-crm 2>/dev/null)
+if [ "$NEU" != "$ALT" ]; then
+  docker rm -f magnetic-crm 2>/dev/null
+  docker run -d --name magnetic-crm --restart unless-stopped -p 3010:3000 --env-file "$ENV" $IMG
+  docker image prune -f
+fi
+```
+
+Nach einer Aenderung an `crm.env`: Container einmal neu erstellen
+(Aufgabe ausfuehren reicht nicht, weil sich das Image nicht geaendert hat):
+im Container Manager den Container `magnetic-crm` stoppen und loeschen,
+dann die Aufgabe ausfuehren.
+
+## Postfach-Abgleich (IMAP)
+
+Mit `IMAP_HOST` (plus `SMTP_USER`/`SMTP_PASS`, optional `IMAP_USER`/`IMAP_PASS`)
+liest das CRM Posteingang und Gesendet und legt Mails als Aktivitaet an,
+deren Absender oder Empfaenger exakt einer E-Mail-Adresse eines
+Ansprechpartners entspricht. Alles andere wird nicht gespeichert.
+Laeuft, solange das CRM in einem Browser offen ist (alle 5 Minuten),
+oder per Knopf unter Einstellungen -> Postfach-Abgleich.
+
+Einmalig `supabase/09_mail_sync.sql` im SQL-Editor ausfuehren.

@@ -179,6 +179,8 @@ export type Activity = {
   deal_id: string | null;
   user_id: string | null;
   type: ActivityType;
+  direction?: 'in' | 'out' | null;
+  message_id?: string | null;
   call_kind: CallKind | null;
   outcome: CallOutcome | null;
   duration_seconds: number | null;

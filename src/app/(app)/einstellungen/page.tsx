@@ -8,6 +8,8 @@ import {
 } from '@/app/actions/crm';
 import { saveEmailSettings, createEmailTemplate, deleteEmailTemplate } from '@/app/actions/email';
 import { smtpConfigured } from '@/lib/mailer';
+import { mailSyncConfigured } from '@/lib/mailsync';
+import MailSyncCard from '@/components/MailSyncCard';
 import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
 import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
@@ -20,13 +22,14 @@ export default async function SettingsPage() {
   const manager = canManage(profile);
 
   const [{ data: org }, { data: pipelines }, { data: stages }, { data: team },
-         { data: emailSettings }, { data: templates }] = await Promise.all([
+         { data: emailSettings }, { data: templates }, { data: mailStates }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
     supabase.from('pipelines').select('*').eq('org_id', orgId).order('position'),
     supabase.from('pipeline_stages').select('*').order('position'),
     supabase.from('profiles').select('*').eq('org_id', orgId).order('full_name'),
     supabase.from('email_settings').select('*').eq('org_id', orgId).maybeSingle(),
     supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
+    supabase.from('mail_sync_state').select('folder, last_run_at, last_error, imported').eq('org_id', orgId).order('folder'),
   ]);
 
   const pipelineList = (pipelines ?? []) as Pipeline[];
@@ -211,6 +214,12 @@ export default async function SettingsPage() {
             </form>
           </div>
         </section>
+
+        <MailSyncCard
+          configured={mailSyncConfigured()}
+          user={process.env.IMAP_USER ?? process.env.SMTP_USER ?? null}
+          states={(mailStates ?? []) as { folder: string; last_run_at: string | null; last_error: string | null; imported: number }[]}
+        />
 
         {/* Team */}
         <section className="card p-5">
