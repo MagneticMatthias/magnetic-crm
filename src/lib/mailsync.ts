@@ -85,11 +85,15 @@ export async function syncMailbox(
   try {
     await client.connect();
 
-    // Posteingang + der Ordner, den der Server als "Gesendet" markiert
+    // Alle Ordner, denn wer Mails wegsortiert, hat sie nicht mehr im
+    // Posteingang. Ausgenommen: Spam, Papierkorb, Entwuerfe.
     const boxes = await client.list();
-    const sent = boxes.find((b) => b.specialUse === '\\Sent')?.path
-      ?? boxes.find((b) => /^(sent|gesendet)/i.test(b.name))?.path;
-    const folders = ['INBOX', ...(sent ? [sent] : [])];
+    const ausgeschlossen = new Set(['\\Junk', '\\Trash', '\\Drafts']);
+    const folders = boxes
+      .filter((b) => !b.flags?.has('\\Noselect'))
+      .filter((b) => !(b.specialUse && ausgeschlossen.has(b.specialUse)))
+      .filter((b) => !/^(junk|spam|trash|papierkorb|gel[oö]scht|deleted|drafts?|entw[uü]rfe)/i.test(b.name))
+      .map((b) => b.path);
 
     for (const folder of folders) {
       const f: SyncResult['folders'][number] = { folder, imported: 0 };

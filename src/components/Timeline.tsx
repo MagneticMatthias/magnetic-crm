@@ -11,7 +11,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { istHtml, ohneZitat } from '@/lib/mailtext';
 import { updateActivity, deleteActivity } from '@/app/actions/crm';
 import FollowUpPicker from '@/components/FollowUpPicker';
-import type { Activity, ActivityType, CallKind, CallOutcome } from '@/lib/types';
+import type { Activity, ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
 
 const ICON: Record<ActivityType, typeof Phone> = {
   call: Phone, note: StickyNote, email: Mail,
@@ -39,7 +39,7 @@ const teileDatum = (iso: string) => {
   };
 };
 
-function EditForm({ a, onDone }: { a: Row; onDone: () => void }) {
+function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () => void }) {
   const editor = useRef<HTMLDivElement>(null);
   const { datum, zeit } = teileDatum(a.occurred_at);
   const html = istHtml(a.body ?? '');
@@ -119,6 +119,16 @@ function EditForm({ a, onDone }: { a: Row; onDone: () => void }) {
         )}
       </div>
 
+      {stages && stages.length > 0 && a.deal_id && (
+        <div>
+          <label className="label" htmlFor={`st-${a.id}`}>Deal danach verschieben nach</label>
+          <select id={`st-${a.id}`} name="next_stage_id" className="input" defaultValue="">
+            <option value="">– Phase unverändert –</option>
+            {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      )}
+
       <FollowUpPicker />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -132,8 +142,8 @@ function EditForm({ a, onDone }: { a: Row; onDone: () => void }) {
 }
 
 export default function Timeline({
-  activities, editable, onChanged,
-}: { activities: Row[]; editable?: boolean; onChanged?: () => void }) {
+  activities, editable, stages, onChanged,
+}: { activities: Row[]; editable?: boolean; stages?: Stage[]; onChanged?: () => void }) {
   const [editId, setEditId] = useState<string | null>(null);
 
   if (!activities.length) {
@@ -151,7 +161,7 @@ export default function Timeline({
         if (editable && editId === a.id) {
           return (
             <li key={a.id} className="card p-3.5">
-              <EditForm a={a} onDone={() => { setEditId(null); onChanged?.(); }} />
+              <EditForm a={a} stages={stages} onDone={() => { setEditId(null); onChanged?.(); }} />
             </li>
           );
         }

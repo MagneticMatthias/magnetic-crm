@@ -257,12 +257,23 @@ export async function updateActivity(formData: FormData) {
   }).eq('id', String(formData.get('id')));
   if (error) throw new Error(error.message);
 
-  // Auch beim Nachtragen laesst sich eine Wiedervorlage setzen. Kontakt und
-  // Deal stehen nicht im Formular, sie kommen aus der Aktivitaet selbst.
+  // Kontakt und Deal stehen nicht im Formular, sie kommen aus der Aktivitaet.
+  const { data: a } = await supabase
+    .from('activities').select('contact_id, deal_id').eq('id', String(formData.get('id'))).single();
+
+  // Auch beim Nachtragen laesst sich eine Wiedervorlage setzen ...
   if (str(formData, 'followup_at')) {
-    const { data: a } = await supabase
-      .from('activities').select('contact_id, deal_id').eq('id', String(formData.get('id'))).single();
     await createFollowUp(supabase, orgId, profile.id, formData, a?.contact_id ?? null, a?.deal_id ?? null);
+  }
+  // ... und der Deal verschieben, z. B. eine importierte Absage auf Verloren.
+  const nextStage = str(formData, 'next_stage_id');
+  if (nextStage && a?.deal_id) {
+    const { data: stage } = await supabase
+      .from('pipeline_stages').select('pipeline_id').eq('id', nextStage).single();
+    if (stage) {
+      await supabase.from('deals')
+        .update({ stage_id: nextStage, pipeline_id: stage.pipeline_id }).eq('id', a.deal_id);
+    }
   }
 
   refreshAll();
