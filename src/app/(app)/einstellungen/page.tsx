@@ -8,7 +8,7 @@ import {
 } from '@/app/actions/crm';
 import { saveEmailSettings, createEmailTemplate, deleteEmailTemplate } from '@/app/actions/email';
 import { smtpConfigured } from '@/lib/mailer';
-import { mailSyncConfigured } from '@/lib/mailsync';
+import { mailSyncConfigured, mailAccountNames } from '@/lib/mailsync';
 import MailSyncCard from '@/components/MailSyncCard';
 import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
@@ -217,7 +217,7 @@ export default async function SettingsPage() {
 
         <MailSyncCard
           configured={mailSyncConfigured()}
-          user={process.env.IMAP_USER ?? process.env.SMTP_USER ?? null}
+          users={mailAccountNames()}
           states={(mailStates ?? []) as { folder: string; last_run_at: string | null; last_error: string | null; imported: number }[]}
         />
 

@@ -7,7 +7,7 @@ import { dateTime } from '@/lib/format';
 
 type State = { folder: string; last_run_at: string | null; last_error: string | null; imported: number };
 
-export default function MailSyncCard({ configured, user, states }: { configured: boolean; user: string | null; states: State[] }) {
+export default function MailSyncCard({ configured, users, states }: { configured: boolean; users: string[]; states: State[] }) {
   const [pending, start] = useTransition();
   const [meldung, setMeldung] = useState<string | null>(null);
 
@@ -16,7 +16,7 @@ export default function MailSyncCard({ configured, user, states }: { configured:
       <h2 className="mb-1 text-sm font-semibold">Postfach-Abgleich</h2>
       <p className="mb-4 text-xs text-muted">
         {configured
-          ? <>Liest Posteingang und Gesendet von <b>{user}</b>. Gespeichert wird nur, was exakt zu einer hinterlegten E-Mail-Adresse eines Ansprechpartners passt. Läuft automatisch, solange das CRM offen ist.</>
+          ? <>Liest alle Ordner von <b>{users.join(', ')}</b>. Gespeichert wird nur, was exakt zu einer hinterlegten E-Mail-Adresse eines Ansprechpartners passt. Läuft automatisch, solange das CRM offen ist.</>
           : 'Nicht eingerichtet. Setze IMAP_HOST (z. B. imap.ionos.de) sowie SMTP_USER und SMTP_PASS in der Server-Umgebung.'}
       </p>
 

@@ -30,13 +30,37 @@ const MIN_ABSTAND_MS = 2 * 60 * 1000;
 
 let laeuft = false;
 
-export function mailSyncConfigured() {
-  return Boolean(host() && user() && pass());
+type Account = { host: string; port: number; user: string; pass: string };
+
+/**
+ * Mehrere Postfaecher: das erste aus IMAP_HOST + SMTP_USER/SMTP_PASS
+ * (oder IMAP_USER/IMAP_PASS), weitere als IMAP_USER_2/IMAP_PASS_2,
+ * IMAP_USER_3/... mit optional eigenem IMAP_HOST_2.
+ */
+export function mailAccounts(): Account[] {
+  const out: Account[] = [];
+  const host = process.env.IMAP_HOST;
+  const port = Number(process.env.IMAP_PORT ?? 993);
+  const u1 = process.env.IMAP_USER ?? process.env.SMTP_USER;
+  const p1 = process.env.IMAP_PASS ?? process.env.SMTP_PASS;
+  if (host && u1 && p1) out.push({ host, port, user: u1, pass: p1 });
+  for (let i = 2; i <= 5; i++) {
+    const u = process.env[`IMAP_USER_${i}`];
+    const p = process.env[`IMAP_PASS_${i}`];
+    const h = process.env[`IMAP_HOST_${i}`] ?? host;
+    if (u && p && h) out.push({ host: h, port: Number(process.env[`IMAP_PORT_${i}`] ?? port), user: u, pass: p });
+  }
+  return out;
 }
-const host = () => process.env.IMAP_HOST;
-const port = () => Number(process.env.IMAP_PORT ?? 993);
-const user = () => process.env.IMAP_USER ?? process.env.SMTP_USER;
-const pass = () => process.env.IMAP_PASS ?? process.env.SMTP_PASS;
+
+export function mailSyncConfigured() {
+  return mailAccounts().length > 0;
+}
+
+/** Nur die Adressen, fuer die Anzeige. */
+export function mailAccountNames(): string[] {
+  return mailAccounts().map((a) => a.user);
+}
 
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
 
@@ -72,55 +96,71 @@ export async function syncMailbox(
   }
   if (adressbuch.size === 0) return result;
 
-  const eigene = new Set([norm(user())]);
+  const accounts = mailAccounts();
+  // Eigene Adressen aller Konten: entscheidet ueber Eingang/Ausgang und
+  // sorgt dafuer, dass Post zwischen den eigenen Postfaechern ignoriert wird.
+  const eigene = new Set(accounts.map((a) => norm(a.user)));
 
   laeuft = true;
   result.ran = true;
-  const client = new ImapFlow({
-    host: host()!, port: port(), secure: port() === 993,
-    auth: { user: user()!, pass: pass()! },
-    logger: false,
-  });
-
   try {
-    await client.connect();
-
-    // Alle Ordner, denn wer Mails wegsortiert, hat sie nicht mehr im
-    // Posteingang. Ausgenommen: Spam, Papierkorb, Entwuerfe.
-    const boxes = await client.list();
-    const ausgeschlossen = new Set(['\\Junk', '\\Trash', '\\Drafts']);
-    const folders = boxes
-      .filter((b) => !b.flags?.has('\\Noselect'))
-      .filter((b) => !(b.specialUse && ausgeschlossen.has(b.specialUse)))
-      .filter((b) => !/^(junk|spam|trash|papierkorb|gel[oö]scht|deleted|drafts?|entw[uü]rfe)/i.test(b.name))
-      .map((b) => b.path);
-
-    for (const folder of folders) {
-      const f: SyncResult['folders'][number] = { folder, imported: 0 };
-      result.folders.push(f);
+    for (const acc of accounts) {
+      const client = new ImapFlow({
+        host: acc.host, port: acc.port, secure: acc.port === 993,
+        auth: { user: acc.user, pass: acc.pass },
+        logger: false,
+      });
       try {
-        f.imported = await syncFolder(client, supabase, orgId, folder, adressbuch, eigene);
-        result.imported += f.imported;
+        await client.connect();
+
+        // Alle Ordner, denn wer Mails wegsortiert, hat sie nicht mehr im
+        // Posteingang. Ausgenommen: Spam, Papierkorb, Entwuerfe.
+        const boxes = await client.list();
+        const ausgeschlossen = new Set(['\\Junk', '\\Trash', '\\Drafts']);
+        const folders = boxes
+          .filter((b) => !b.flags?.has('\\Noselect'))
+          .filter((b) => !(b.specialUse && ausgeschlossen.has(b.specialUse)))
+          .filter((b) => !/^(junk|spam|trash|papierkorb|gel[oö]scht|deleted|drafts?|entw[uü]rfe)/i.test(b.name))
+          .map((b) => b.path);
+
+        for (const folder of folders) {
+          // Fortschritt je Konto UND Ordner - zwei Konten haben beide eine INBOX
+          const key = `${acc.user} · ${folder}`;
+          const f: SyncResult['folders'][number] = { folder: key, imported: 0 };
+          result.folders.push(f);
+          try {
+            f.imported = await syncFolder(client, supabase, orgId, folder, key, adressbuch, eigene);
+            result.imported += f.imported;
+          } catch (e) {
+            f.error = e instanceof Error ? e.message : String(e);
+            await supabase.from('mail_sync_state').upsert({
+              org_id: orgId, folder: key, last_run_at: new Date().toISOString(), last_error: f.error,
+            });
+          }
+        }
       } catch (e) {
-        f.error = e instanceof Error ? e.message : String(e);
+        // Login-Fehler eines Kontos sichtbar machen, die anderen weiter abgleichen
+        const msg = e instanceof Error ? e.message : String(e);
+        result.folders.push({ folder: `${acc.user}`, imported: 0, error: msg });
         await supabase.from('mail_sync_state').upsert({
-          org_id: orgId, folder, last_run_at: new Date().toISOString(), last_error: f.error,
+          org_id: orgId, folder: acc.user, last_run_at: new Date().toISOString(), last_error: msg,
         });
+      } finally {
+        await client.logout().catch(() => undefined);
       }
     }
   } finally {
     laeuft = false;
-    await client.logout().catch(() => undefined);
   }
   return result;
 }
 
 async function syncFolder(
-  client: ImapFlow, supabase: SupabaseClient, orgId: string, folder: string,
+  client: ImapFlow, supabase: SupabaseClient, orgId: string, folder: string, key: string,
   adressbuch: Map<string, PersonRef>, eigene: Set<string>,
 ): Promise<number> {
   const { data: state } = await supabase
-    .from('mail_sync_state').select('*').eq('org_id', orgId).eq('folder', folder).maybeSingle();
+    .from('mail_sync_state').select('*').eq('org_id', orgId).eq('folder', key).maybeSingle();
 
   const lock = await client.getMailboxLock(folder);
   let imported = 0;
@@ -182,7 +222,7 @@ async function syncFolder(
     }
 
     await supabase.from('mail_sync_state').upsert({
-      org_id: orgId, folder, uidvalidity, last_uid: lastUid,
+      org_id: orgId, folder: key, uidvalidity, last_uid: lastUid,
       last_run_at: new Date().toISOString(), last_error: null,
       imported: Number(state?.imported ?? 0) + imported,
     });

@@ -185,7 +185,12 @@ SMTP_USER=deine@magnetic-medien.de
 SMTP_PASS=...
 IMAP_HOST=imap.ionos.de
 IMAP_PORT=993
+IMAP_USER_2=info@magnetic-medien.de
+IMAP_PASS_2=...
 ```
+
+Weitere Postfaecher als IMAP_USER_3/IMAP_PASS_3 usw. (bis 5), bei anderem
+Anbieter mit IMAP_HOST_3.
 
 3. Aufgabenplaner-Skript (Benutzer root) ersetzen durch:
 
