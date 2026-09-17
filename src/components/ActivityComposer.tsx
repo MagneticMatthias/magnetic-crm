@@ -94,20 +94,26 @@ export default function ActivityComposer({
               </div>
             </div>
 
-            {stages && stages.length > 0 && (
-              <div>
-                <label className="label" htmlFor="next_stage_id">Deal danach verschieben nach</label>
-                <select id="next_stage_id" name="next_stage_id" className="input" defaultValue="">
-                  <option value="">– automatisch aus dem Ergebnis –</option>
-                  {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
           </>
         ) : (
           <div>
             <label className="label" htmlFor="subject">Betreff</label>
             <input id="subject" name="subject" className="input" placeholder="Kurzer Betreff" />
+          </div>
+        )}
+
+        {/* Fuer alle Typen, nicht nur Anrufe: eine Absage per Mail oder ein
+            LinkedIn-Kontakt muss den Deal genauso bewegen koennen. Bei Anruf
+            und LinkedIn zieht die Automatik nach, sonst bleibt die Phase. */}
+        {stages && stages.length > 0 && (
+          <div>
+            <label className="label" htmlFor="next_stage_id">Deal danach verschieben nach</label>
+            <select id="next_stage_id" name="next_stage_id" className="input" defaultValue="">
+              <option value="">
+                {type === 'call' || type === 'linkedin' ? '– automatisch aus dem Ergebnis –' : '– Phase unverändert –'}
+              </option>
+              {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
         )}
 
