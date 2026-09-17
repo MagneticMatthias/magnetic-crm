@@ -132,6 +132,11 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
+        {/* Welche Fassung laeuft hier? Erspart das Raten nach jedem Update. */}
+        <p className="mt-auto truncate border-t border-line px-4 py-2.5 text-[10px] text-muted"
+           title="Build-Stand dieser Fassung">
+          Stand: {process.env.NEXT_PUBLIC_BUILD_STAND || 'lokal'}
+        </p>
       </aside>
 
       {open && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setOpen(false)} />}
