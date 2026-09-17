@@ -2,6 +2,7 @@ import 'server-only';
 import { ImapFlow } from 'imapflow';
 import { simpleParser, type AddressObject } from 'mailparser';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ohneZitat, htmlZuText } from '@/lib/mailtext';
 
 /**
  * Postfach-Abgleich: liest Posteingang und Gesendet per IMAP und legt jede
@@ -43,24 +44,6 @@ function addressesOf(a: AddressObject | AddressObject[] | undefined): string[] {
   if (!a) return [];
   const list = Array.isArray(a) ? a : [a];
   return list.flatMap((x) => x.value.map((v) => norm(v.address))).filter(Boolean);
-}
-
-/** Antwortzitate abschneiden, damit die Zeitleiste lesbar bleibt. */
-function ohneZitat(text: string): string {
-  const marker = /^(Am .{5,80} schrieb .*:|On .{5,80} wrote:|-{3,}\s*(Original|Urspr).*|Von: .*\n(Gesendet|Datum): .*)$/m;
-  const m = text.match(marker);
-  const cut = m && m.index !== undefined && m.index > 40 ? text.slice(0, m.index) : text;
-  return cut.replace(/\n{3,}/g, '\n\n').trim();
-}
-
-function htmlZuText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|tr|h\d)>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 type PersonRef = { contact_id: string; person_id: string };

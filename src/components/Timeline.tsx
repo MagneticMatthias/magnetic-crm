@@ -8,6 +8,7 @@ import { ACTIVITY_TYPE_LABEL, CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/
 import { dateTime, duration } from '@/lib/format';
 import { Badge } from '@/components/Badge';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { istHtml, ohneZitat } from '@/lib/mailtext';
 import { updateActivity, deleteActivity } from '@/app/actions/crm';
 import FollowUpPicker from '@/components/FollowUpPicker';
 import type { Activity, ActivityType, CallKind, CallOutcome } from '@/lib/types';
@@ -25,8 +26,9 @@ type Row = Activity & {
   direction?: 'in' | 'out' | null;
 };
 
-/** Notizen aus dem Call-Flow sind Rich-Text, alles andere einfacher Text. */
-const istHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
+/** Importierte Mails: Zitate auch bei aelteren Eintraegen wegputzen. */
+const anzeigeText = (a: Row) =>
+  a.type === 'email' && a.message_id && a.body ? ohneZitat(a.body) : (a.body ?? '');
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const teileDatum = (iso: string) => {
@@ -199,7 +201,7 @@ function Inhalt({
       {a.body && (istHtml(a.body)
         ? <div className="mt-1 text-sm text-muted [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-sm [&_h2]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
                dangerouslySetInnerHTML={{ __html: sanitizeHtml(a.body) }} />
-        : <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{a.body}</p>)}
+        : <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{anzeigeText(a)}</p>)}
       {a.user && <p className="mt-1.5 text-xs text-muted">{a.user.full_name || a.user.email}</p>}
     </>
   );
