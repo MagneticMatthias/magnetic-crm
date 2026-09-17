@@ -43,12 +43,13 @@ function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () 
   const editor = useRef<HTMLDivElement>(null);
   const { datum, zeit } = teileDatum(a.occurred_at);
   const html = istHtml(a.body ?? '');
+  const importiert = Boolean(a.message_id);
 
   return (
     <form
       className="space-y-3"
       action={async (fd) => {
-        if (html) fd.set('body', sanitizeHtml(editor.current?.innerHTML ?? ''));
+        if (html && !importiert) fd.set('body', sanitizeHtml(editor.current?.innerHTML ?? ''));
         await updateActivity(fd);
         onDone();
       }}
@@ -56,6 +57,21 @@ function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () 
       <input type="hidden" name="id" value={a.id} />
       <input type="hidden" name="type" value={a.type} />
 
+      {importiert ? (
+        <>
+          {/* Die Mail selbst bleibt, wie sie ist. Nur die Anmerkung ist frei. */}
+          <div className="rounded-lg border border-line bg-surface-2/50 p-3 text-sm">
+            <p className="mb-1 font-medium">{a.subject}</p>
+            <p className="whitespace-pre-wrap text-muted">{anzeigeText(a)}</p>
+          </div>
+          <div>
+            <label className="label" htmlFor={`c-${a.id}`}>Anmerkung</label>
+            <textarea id={`c-${a.id}`} name="comment" className="input min-h-20" defaultValue={a.comment ?? ''}
+                      placeholder="Dein Kommentar zu dieser Mail, z. B. Grund der Absage, was daraus folgt …" />
+          </div>
+        </>
+      ) : (
+      <>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor={`d-${a.id}`}>Datum</label>
@@ -118,6 +134,8 @@ function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () 
           <textarea name="body" className="input min-h-24" defaultValue={a.body ?? ''} />
         )}
       </div>
+      </>
+      )}
 
       {stages && stages.length > 0 && a.deal_id && (
         <div>
@@ -212,6 +230,11 @@ function Inhalt({
         ? <div className="mt-1 text-sm text-muted [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-sm [&_h2]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
                dangerouslySetInnerHTML={{ __html: sanitizeHtml(a.body) }} />
         : <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{anzeigeText(a)}</p>)}
+      {a.comment && (
+        <p className="mt-2 rounded-md border-l-2 border-brand bg-brand-soft/40 px-2.5 py-1.5 text-sm whitespace-pre-wrap">
+          {a.comment}
+        </p>
+      )}
       {a.user && <p className="mt-1.5 text-xs text-muted">{a.user.full_name || a.user.email}</p>}
     </>
   );

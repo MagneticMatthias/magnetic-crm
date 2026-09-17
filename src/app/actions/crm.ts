@@ -245,16 +245,21 @@ export async function updateActivity(formData: FormData) {
   const minutes = Number(str(formData, 'duration_minutes') ?? 0);
   const datum = str(formData, 'date');
 
-  const { error } = await supabase.from('activities').update({
-    call_kind: type === 'call' ? str(formData, 'call_kind') : null,
-    outcome: type === 'call' ? str(formData, 'outcome') : null,
-    answered_by: type === 'call' ? str(formData, 'answered_by') : null,
-    duration_seconds: type === 'call' && minutes > 0 ? Math.round(minutes * 60) : null,
-    subject: str(formData, 'subject'),
-    body: str(formData, 'body'),
-    // Fehlt das Datum, bleibt der alte Zeitpunkt stehen.
-    ...(datum ? { occurred_at: new Date(`${datum}T${str(formData, 'time') ?? '12:00'}`).toISOString() } : {}),
-  }).eq('id', String(formData.get('id')));
+  // Importierte Mails schicken weder Betreff noch Text mit - die bleiben,
+  // wie sie sind. Nur Felder aendern, die das Formular tatsaechlich enthaelt.
+  const patch: Record<string, unknown> = {};
+  if (type === 'call') {
+    patch.call_kind = str(formData, 'call_kind');
+    patch.outcome = str(formData, 'outcome');
+    patch.answered_by = str(formData, 'answered_by');
+    patch.duration_seconds = minutes > 0 ? Math.round(minutes * 60) : null;
+  }
+  if (formData.has('subject')) patch.subject = str(formData, 'subject');
+  if (formData.has('body')) patch.body = str(formData, 'body');
+  if (formData.has('comment')) patch.comment = str(formData, 'comment');
+  if (datum) patch.occurred_at = new Date(`${datum}T${str(formData, 'time') ?? '12:00'}`).toISOString();
+
+  const { error } = await supabase.from('activities').update(patch).eq('id', String(formData.get('id')));
   if (error) throw new Error(error.message);
 
   // Kontakt und Deal stehen nicht im Formular, sie kommen aus der Aktivitaet.

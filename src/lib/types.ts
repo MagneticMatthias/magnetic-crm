@@ -181,6 +181,7 @@ export type Activity = {
   type: ActivityType;
   direction?: 'in' | 'out' | null;
   message_id?: string | null;
+  comment?: string | null;
   call_kind: CallKind | null;
   outcome: CallOutcome | null;
   duration_seconds: number | null;
