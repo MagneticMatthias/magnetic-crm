@@ -180,10 +180,11 @@ async function createFollowUp(
     titel = firma ? `Nochmal anrufen: ${firma}` : 'Nochmal anrufen';
   }
 
+  const prio = Number(str(formData, 'followup_priority') ?? 2);
   await supabase.from('tasks').insert({
     org_id: orgId, contact_id: contactId, deal_id: dealId,
     assignee_id: profileId, created_by: profileId,
-    title: titel, due_at: at, priority: 2,
+    title: titel, due_at: at, priority: [1, 2, 3].includes(prio) ? prio : 2,
   });
 }
 

@@ -23,7 +23,11 @@ const toLocalInput = (iso: string | null | undefined) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-function TaskRow({ t, now, showContext }: { t: Row; now: number; showContext?: boolean }) {
+function TaskRow({ t, now, showContext, showContact }: {
+  t: Row; now: number; showContext?: boolean;
+  /** Firma in der Zeile nennen (Terminansicht); in der Firmenansicht steht sie in der Ueberschrift. */
+  showContact?: boolean;
+}) {
   const [edit, setEdit] = useState(false);
   const overdue = !t.done && t.due_at && new Date(t.due_at).getTime() < now;
 
@@ -69,10 +73,12 @@ function TaskRow({ t, now, showContext }: { t: Row; now: number; showContext?: b
         </button>
       </form>
 
-      {/* Ganze Zeile oeffnet die Bearbeitung, nicht nur der Stift. */}
-      <button type="button" onClick={() => setEdit(true)}
-              className="group min-w-0 flex-1 rounded-md text-left transition hover:bg-surface-2/60"
-              title="Aufgabe bearbeiten">
+      {/* Ganze Zeile oeffnet die Bearbeitung, nicht nur der Stift. Kein
+          <button>, weil der Firmenlink darin ein eigenes Ziel hat. */}
+      <div role="button" tabIndex={0} onClick={() => setEdit(true)}
+           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEdit(true); } }}
+           className="group min-w-0 flex-1 cursor-pointer rounded-md text-left transition hover:bg-surface-2/60"
+           title="Aufgabe bearbeiten">
         <p className={`text-sm ${t.done ? 'text-muted line-through' : 'font-medium'}`}>{t.title}</p>
         {t.description && <p className="mt-0.5 text-xs text-muted">{t.description}</p>}
         <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -80,10 +86,18 @@ function TaskRow({ t, now, showContext }: { t: Row; now: number; showContext?: b
             {t.due_at ? dateTime(t.due_at) : 'ohne Frist'}
           </span>
           <span>· {PRIORITY[t.priority] ?? 'Mittel'}</span>
+          {showContact && t.contact && (
+            <Link href={`/kontakte?open=${t.contact.id}`} onClick={(e) => e.stopPropagation()}
+                  className="inline-flex min-w-0 items-center gap-1 font-medium text-brand hover:underline"
+                  title="Kontakt öffnen">
+              <Building2 size={12} className="shrink-0" />
+              <span className="truncate">{t.contact.company || 'Kontakt'}</span>
+            </Link>
+          )}
           {showContext && !t.contact && t.deal && <span className="truncate">· {t.deal.title}</span>}
           <Pencil size={11} className="opacity-0 transition group-hover:opacity-100" />
         </span>
-      </button>
+      </div>
 
       <form action={deleteTask} className="shrink-0">
         <input type="hidden" name="id" value={t.id} />
@@ -151,7 +165,7 @@ export default function TaskList({
               </span>
             </div>
             <ul className="space-y-2">
-              {bloecke.get(b)!.map((t) => <TaskRow key={t.id} t={t} now={now} showContext />)}
+              {bloecke.get(b)!.map((t) => <TaskRow key={t.id} t={t} now={now} showContext showContact />)}
             </ul>
           </div>
         ))}

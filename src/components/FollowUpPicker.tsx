@@ -74,10 +74,20 @@ export default function FollowUpPicker() {
       </div>
 
       {/* Immer sichtbar, nicht erst nach Wahl des Datums - sonst sucht man es. */}
-      <div className="mt-2">
-        <label className="label" htmlFor={`fu-title-${id}`}>Betreff der Wiedervorlage</label>
-        <input id={`fu-title-${id}`} name="followup_title" className="input text-[13px]"
-               placeholder={iso ? 'z. B. Video 2027 ansprechen (leer = „Nochmal anrufen“)' : 'Erst oben ein Datum wählen'} />
+      <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_140px]">
+        <div>
+          <label className="label" htmlFor={`fu-title-${id}`}>Betreff der Wiedervorlage</label>
+          <input id={`fu-title-${id}`} name="followup_title" className="input text-[13px]"
+                 placeholder={iso ? 'z. B. Video 2027 ansprechen (leer = „Nochmal anrufen“)' : 'Erst oben ein Datum wählen'} />
+        </div>
+        <div>
+          <label className="label" htmlFor={`fu-prio-${id}`}>Priorität</label>
+          <select id={`fu-prio-${id}`} name="followup_priority" className="input text-[13px]" defaultValue="2">
+            <option value="1">Hoch</option>
+            <option value="2">Mittel</option>
+            <option value="3">Niedrig</option>
+          </select>
+        </div>
       </div>
     </div>
   );
