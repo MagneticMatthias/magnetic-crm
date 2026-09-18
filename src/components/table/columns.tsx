@@ -34,7 +34,7 @@ const Firma = ({ name }: { name: string | null | undefined }) => {
   return (
     <span className="inline-flex max-w-full items-center gap-0.5">
       <span onClick={(e) => e.stopPropagation()} className="inline-flex shrink-0 items-center">
-        <a href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(name)}`}
+        <a href={`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(name)}`}
            target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
            className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
           <Share2 size={13} />

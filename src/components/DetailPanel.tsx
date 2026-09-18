@@ -333,7 +333,7 @@ export default function DetailPanel({
             {!loading && title && (
               <>
                 {/* Nur ein Link auf die LinkedIn-Suche - kein Auslesen, kein Risiko fuer den Account */}
-                <a href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(contact?.company || title)}`}
+                <a href={`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(contact?.company || title)}`}
                    target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-surface-2 hover:text-[#0a66c2]">
                   <Share2 size={15} />
