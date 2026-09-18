@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
-  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip, Share2,
+  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
 } from 'lucide-react';
 import {
   loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
@@ -23,6 +23,7 @@ import TaskComposer from '@/components/TaskComposer';
 import NoteEditor from '@/components/NoteEditor';
 import CallFlowCard from '@/components/CallFlowCard';
 import CopyButton from '@/components/CopyButton';
+import LinkedInIcon from '@/components/LinkedInIcon';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
 import { dateTime, dateOnly, eur, initials, personName, primaryPerson, phoneOf } from '@/lib/format';
@@ -336,7 +337,7 @@ export default function DetailPanel({
                 <a href={`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(contact?.company || title)}`}
                    target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-surface-2 hover:text-[#0a66c2]">
-                  <Share2 size={15} />
+                  <LinkedInIcon size={15} />
                 </a>
                 <CopyButton text={title} label="Namen kopieren" />
               </>

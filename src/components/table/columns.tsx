@@ -2,8 +2,9 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check, Share2 } from 'lucide-react';
+import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
+import LinkedInIcon from '@/components/LinkedInIcon';
 import { setDealStage } from '@/app/actions/records';
 import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
@@ -37,7 +38,7 @@ const Firma = ({ name }: { name: string | null | undefined }) => {
         <a href={`https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(name)}`}
            target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
            className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
-          <Share2 size={13} />
+          <LinkedInIcon size={13} />
         </a>
         <CopyButton text={name} label="Namen kopieren" small />
       </span>
