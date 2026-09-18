@@ -2,7 +2,8 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
+import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check, Share2 } from 'lucide-react';
+import CopyButton from '@/components/CopyButton';
 import { setDealStage } from '@/app/actions/records';
 import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
@@ -22,6 +23,28 @@ export type ColumnDef<T> = {
 
 const Muted = ({ children }: { children: ReactNode }) =>
   children ? <>{children}</> : <span className="text-muted">–</span>;
+
+/**
+ * Firmenname mit zwei Griffen davor: kopieren und bei LinkedIn suchen.
+ * Direkt in der Zeile, damit die Recherche vor dem Anruf ein Klick ist.
+ * Beide stoppen den Klick, sonst ginge zusaetzlich die Detailansicht auf.
+ */
+const Firma = ({ name }: { name: string | null | undefined }) => {
+  if (!name) return <span className="text-muted">–</span>;
+  return (
+    <span className="inline-flex max-w-full items-center gap-0.5">
+      <span onClick={(e) => e.stopPropagation()} className="inline-flex shrink-0 items-center">
+        <CopyButton text={name} label="Namen kopieren" small />
+        <a href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(name)}`}
+           target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
+           className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
+          <Share2 size={13} />
+        </a>
+      </span>
+      <span className="truncate">{name}</span>
+    </span>
+  );
+};
 
 const PersonChip = ({ count }: { count: number }) =>
   count === 0 ? (
@@ -236,7 +259,7 @@ const pname = (persons?: { first_name: string | null; last_name: string | null; 
 /* ------------------------------ Kontakte ------------------------------ */
 
 export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
-  { key: 'company', label: 'Firmenname', width: 240, render: (r) => <Muted>{r.company}</Muted>, sortValue: (r) => r.company ?? '' },
+  { key: 'company', label: 'Firmenname', width: 260, render: (r) => <Firma name={r.company} />, sortValue: (r) => r.company ?? '' },
   { key: 'persons', label: 'Ansprechpartner', width: 200, render: (r) => <PrimaryPerson persons={r.persons} />, sortValue: (r) => pname(r.persons) },
   { key: 'first_name', label: 'Vorname', width: 130, render: (r) => <Muted>{primaryPerson(r.persons)?.first_name}</Muted>, sortValue: (r) => primaryPerson(r.persons)?.first_name ?? '' },
   { key: 'last_name', label: 'Nachname', width: 130, render: (r) => <Muted>{primaryPerson(r.persons)?.last_name}</Muted>, sortValue: (r) => primaryPerson(r.persons)?.last_name ?? '' },
@@ -274,7 +297,7 @@ export const CONTACT_DEFAULT_COLUMNS = [
 /* -------------------------------- Deals ------------------------------- */
 
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
-  { key: 'company', label: 'Firmenname', width: 240, render: (r) => <Muted>{r.contact?.company}</Muted>, sortValue: (r) => r.contact?.company ?? '' },
+  { key: 'company', label: 'Firmenname', width: 260, render: (r) => <Firma name={r.contact?.company} />, sortValue: (r) => r.contact?.company ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
   { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} pipelineId={r.pipeline_id} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },

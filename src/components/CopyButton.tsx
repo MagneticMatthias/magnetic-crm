@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 
 /** Kopiert einen Text in die Zwischenablage und zeigt kurz einen Haken. */
-export default function CopyButton({ text, label = 'Kopieren' }: { text: string; label?: string }) {
+export default function CopyButton({ text, label = 'Kopieren', small }: { text: string; label?: string; small?: boolean }) {
   const [ok, setOk] = useState(false);
 
   const kopieren = async () => {
@@ -25,10 +25,10 @@ export default function CopyButton({ text, label = 'Kopieren' }: { text: string;
 
   return (
     <button type="button" onClick={kopieren} title={ok ? 'Kopiert' : label} aria-label={label}
-            className={`grid h-7 w-7 shrink-0 place-items-center rounded-md transition ${
-              ok ? 'text-win' : 'text-muted hover:bg-surface-2 hover:text-ink'
+            className={`grid shrink-0 place-items-center rounded-md transition ${small ? 'h-6 w-6' : 'h-7 w-7'} ${
+              ok ? 'text-win' : `${small ? 'text-muted/60' : 'text-muted'} hover:bg-surface-2 hover:text-ink`
             }`}>
-      {ok ? <Check size={15} /> : <Copy size={15} />}
+      {ok ? <Check size={small ? 13 : 15} /> : <Copy size={small ? 13 : 15} />}
     </button>
   );
 }
