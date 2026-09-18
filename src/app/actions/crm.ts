@@ -458,6 +458,20 @@ export async function moveStage(formData: FormData) {
   revalidatePath('/pipelines');
 }
 
+/** Reihenfolge der Phasen einer Pipeline komplett neu setzen (Drag & Drop). */
+export async function reorderStages(pipelineId: string, ids: string[]) {
+  const { supabase } = await ctx();
+  const { data: list } = await supabase
+    .from('pipeline_stages').select('id').eq('pipeline_id', pipelineId);
+  const erlaubt = new Set((list ?? []).map((s) => s.id));
+  const reihe = ids.filter((id) => erlaubt.has(id));
+  for (const [pos, id] of reihe.entries()) {
+    await supabase.from('pipeline_stages').update({ position: pos }).eq('id', id);
+  }
+  revalidatePath('/pipelines');
+  revalidatePath('/einstellungen');
+}
+
 export async function deleteStage(formData: FormData) {
   const { supabase } = await ctx();
   const { error } = await supabase.from('pipeline_stages').delete().eq('id', String(formData.get('id')));

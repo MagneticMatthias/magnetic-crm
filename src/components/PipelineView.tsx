@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, LayoutList } from 'lucide-react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import RecordTable from '@/components/table/RecordTable';
 import { StagesProvider } from '@/components/table/StagesContext';
 import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS } from '@/components/table/columns';
@@ -14,10 +17,34 @@ import DealForm from '@/components/DealForm';
 import { DEAL_FIELDS } from '@/lib/filters';
 import { saveFilter, deleteDeals } from '@/app/actions/records';
 import { useViewing } from '@/lib/presence';
-import { createDeal } from '@/app/actions/crm';
+import { createDeal, reorderStages } from '@/app/actions/crm';
 import type {
   ContactWithPersons, DealWithContact, FilterDefinition, Pipeline, Profile, SavedFilter, Stage,
 } from '@/lib/types';
+
+/** Ein Phasen-Reiter, per Ziehen verschiebbar; ein normaler Klick oeffnet ihn. */
+function SortableTab({
+  stage, active, count, href, onOpen,
+}: { stage: Stage; active: boolean; count: number; href: string; onOpen: (href: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
+  return (
+    <button
+      ref={setNodeRef} type="button" {...attributes} {...listeners}
+      onClick={() => onOpen(href)}
+      style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      title="Klicken zum Öffnen, ziehen zum Umsortieren"
+      className={`flex shrink-0 cursor-grab touch-none items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] transition active:cursor-grabbing ${
+        active ? 'border-line bg-surface font-medium shadow-sm' : 'border-transparent text-muted hover:bg-surface-2'
+      }`}
+    >
+      {stage.name}
+      <span className="rounded-full px-1.5 py-0.5 text-[11px] font-medium"
+            style={{ background: `${stage.color}22`, color: stage.color }}>
+        {count}
+      </span>
+    </button>
+  );
+}
 
 export default function PipelineView({
   pipeline, stages, stageId, counts, rows, filter, savedFilters, contacts, team, initialOpen,
@@ -42,6 +69,27 @@ export default function PipelineView({
 
   const tabHref = (id: string | null) => `/pipelines?p=${pipeline.id}${id ? `&s=${id}` : ''}`;
 
+  // Reihenfolge der Reiter: sofort lokal, dann gespeichert. Ein Klick nach
+  // einem Ziehen darf nicht navigieren, deshalb das Merkzeichen.
+  const [order, setOrder] = useState(stages.map((s) => s.id));
+  const [seen, setSeen] = useState(stages);
+  if (seen !== stages) { setSeen(stages); setOrder(stages.map((s) => s.id)); }
+  const gezogen = useRef(false);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const byId = new Map(stages.map((s) => [s.id, s]));
+  const onDragEnd = (e: DragEndEvent) => {
+    gezogen.current = true;
+    setTimeout(() => { gezogen.current = false; }, 0);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = order.indexOf(String(active.id)), to = order.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const neu = arrayMove(order, from, to);
+    setOrder(neu);
+    void reorderStages(pipeline.id, neu);
+  };
+  const openTab = (href: string) => { if (!gezogen.current) router.push(href); };
+
   return (
     <>
       <div className="mb-3 flex gap-1 overflow-x-auto pb-1">
@@ -53,24 +101,18 @@ export default function PipelineView({
         >
           Alle <span className="ml-1 rounded-full bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{rows.length}</span>
         </Link>
-        {stages.map((s) => {
-          const active = s.id === stageId;
-          return (
-            <Link
-              key={s.id}
-              href={tabHref(s.id)}
-              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] transition ${
-                active ? 'border-line bg-surface font-medium shadow-sm' : 'border-transparent text-muted hover:bg-surface-2'
-              }`}
-            >
-              {s.name}
-              <span className="rounded-full px-1.5 py-0.5 text-[11px] font-medium"
-                    style={{ background: `${s.color}22`, color: s.color }}>
-                {counts[s.id] ?? 0}
-              </span>
-            </Link>
-          );
-        })}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={order} strategy={horizontalListSortingStrategy}>
+            {order.map((id) => {
+              const s = byId.get(id);
+              if (!s) return null;
+              return (
+                <SortableTab key={s.id} stage={s} active={s.id === stageId} count={counts[s.id] ?? 0}
+                             href={tabHref(s.id)} onOpen={openTab} />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
       </div>
 
       <StagesProvider value={stages}>
