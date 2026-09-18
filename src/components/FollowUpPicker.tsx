@@ -23,6 +23,10 @@ export default function FollowUpPicker() {
   const [iso, setIso] = useState('');
   const [aktiv, setAktiv] = useState('');
   const [datum, setDatum] = useState('');
+  const [titel, setTitel] = useState('');
+  // Betreff getippt, aber kein Datum: das Formular wuerde still nichts
+  // anlegen und der Text waere weg. Dann ist das Datum Pflicht.
+  const datumFehlt = titel.trim().length > 0 && !iso;
 
   const setzen = (days: number, label: string) => {
     const d = new Date();
@@ -63,7 +67,10 @@ export default function FollowUpPicker() {
         ))}
         <input type="date" value={datum} onChange={(e) => ausDatum(e.target.value)}
                aria-label="Wiedervorlage an einem bestimmten Tag"
-               className="input !w-auto !py-1 text-[13px]" />
+               required={datumFehlt}
+               onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Für die Wiedervorlage fehlt das Datum. Oben einen Zeitraum wählen oder hier ein Datum eintragen.')}
+               onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
+               className={`input !w-auto !py-1 text-[13px] ${datumFehlt ? '!border-lose' : ''}`} />
         {iso && (
           <button type="button" onClick={loeschen}
                   className="chip border border-line bg-surface-2 text-muted hover:text-lose"
@@ -78,7 +85,9 @@ export default function FollowUpPicker() {
         <div>
           <label className="label" htmlFor={`fu-title-${id}`}>Betreff der Wiedervorlage</label>
           <input id={`fu-title-${id}`} name="followup_title" className="input text-[13px]"
+                 value={titel} onChange={(e) => setTitel(e.target.value)}
                  placeholder={iso ? 'z. B. Video 2027 ansprechen (leer = „Nochmal anrufen“)' : 'Erst oben ein Datum wählen'} />
+          {datumFehlt && <p className="mt-1 text-xs text-lose">Ohne Datum wird keine Wiedervorlage angelegt.</p>}
         </div>
         <div>
           <label className="label" htmlFor={`fu-prio-${id}`}>Priorität</label>
