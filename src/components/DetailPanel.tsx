@@ -35,6 +35,7 @@ type Tab = 'info' | 'activities' | 'notes';
 const CUSTOM_LABEL: Record<string, string> = {
   prio: 'Prio', kanal: 'Kanal', standtyp: 'Standtyp', halle_stand: 'Halle / Stand',
   hauptaussteller: 'Hauptaussteller', budgetklasse: 'Budgetklasse', geschaeftsfuehrung: 'Geschäftsführung',
+  groesse: 'Firmengröße', groesse_gesichert: 'Größe gesichert', mitarbeiter: 'Mitarbeiter ca.', konzern: 'Konzern', region: 'Region',
   fundstelle: 'Fundstelle', messe: 'Messe',
 };
 

@@ -96,6 +96,12 @@ export const CONTACT_FIELDS: FieldDef[] = [
     get: (r: ContactWithPersons) => r.custom?.hauptaussteller ?? null },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', type: 'text', group: 'Messe / Zusatzfelder', icon: 'money',
     get: (r: ContactWithPersons) => r.custom?.budgetklasse ?? null },
+  { key: 'custom.groesse', label: 'Firmengröße', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['klein', 'mittel', 'groß', 'unbekannt'], get: (r: ContactWithPersons) => r.custom?.groesse ?? null },
+  { key: 'custom.region', label: 'Region', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.region ?? null },
+  { key: 'custom.konzern', label: 'Konzern', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.konzern ?? null },
 ];
 
 export const DEAL_FIELDS: FieldDef[] = [
@@ -146,6 +152,12 @@ export const DEAL_FIELDS: FieldDef[] = [
     get: (r: DealWithContact) => r.contact?.custom?.halle_stand ?? null },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', type: 'text', group: 'Messe / Zusatzfelder', icon: 'money',
     get: (r: DealWithContact) => r.contact?.custom?.budgetklasse ?? null },
+  { key: 'custom.groesse', label: 'Firmengröße', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['klein', 'mittel', 'groß', 'unbekannt'], get: (r: DealWithContact) => r.contact?.custom?.groesse ?? null },
+  { key: 'custom.region', label: 'Region', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: DealWithContact) => r.contact?.custom?.region ?? null },
+  { key: 'custom.konzern', label: 'Konzern', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: DealWithContact) => r.contact?.custom?.konzern ?? null },
 ];
 
 const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();

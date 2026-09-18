@@ -254,6 +254,11 @@ const hauptDeal = (deals?: ContactDeal[]): ContactDeal | undefined =>
   deals?.find((d) => d.status === 'offen') ?? deals?.[0];
 
 const prioNum = (v: string | null | undefined) => (v ? Number(v) || 9 : 9);
+/** klein < mittel < gross; Unbekanntes ans Ende */
+const groesseNum = (v: string | null | undefined) =>
+  ({ klein: 1, mittel: 2, 'groß': 3, gross: 3 } as Record<string, number>)[(v ?? '').toLowerCase()] ?? 9;
+const Groesse = ({ value }: { value: string | null | undefined }) =>
+  value ? <Badge tone={value === 'klein' ? 'win' : value === 'mittel' ? 'warn' : 'muted'}>{value}</Badge> : <span className="text-muted">–</span>;
 const pname = (persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[] | null) =>
   personName(primaryPerson(persons)) || '';
 
@@ -289,6 +294,11 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'custom.halle_stand', label: 'Halle / Stand', width: 110, render: (r) => <Muted>{r.custom?.halle_stand}</Muted>, sortValue: (r) => r.custom?.halle_stand ?? '' },
   { key: 'custom.hauptaussteller', label: 'Hauptaussteller', width: 220, render: (r) => <Muted>{r.custom?.hauptaussteller}</Muted>, sortValue: (r) => r.custom?.hauptaussteller ?? '' },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', width: 260, render: (r) => <Muted>{r.custom?.budgetklasse}</Muted>, sortValue: (r) => r.custom?.budgetklasse ?? '' },
+  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.custom?.groesse} />, sortValue: (r) => groesseNum(r.custom?.groesse) },
+  { key: 'custom.mitarbeiter', label: 'Mitarbeiter', width: 160, render: (r) => <Muted>{r.custom?.mitarbeiter}</Muted>, sortValue: (r) => r.custom?.mitarbeiter ?? '' },
+  { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.custom?.konzern}</Muted>, sortValue: (r) => r.custom?.konzern ?? '' },
+  { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.custom?.region}</Muted>, sortValue: (r) => r.custom?.region ?? '' },
+  { key: 'custom.messe', label: 'Liste / Messe', width: 150, render: (r) => <Muted>{r.custom?.messe}</Muted>, sortValue: (r) => r.custom?.messe ?? '' },
 ];
 
 export const CONTACT_DEFAULT_COLUMNS = [
@@ -320,6 +330,11 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'custom.halle_stand', label: 'Halle / Stand', width: 110, render: (r) => <Muted>{r.contact?.custom?.halle_stand}</Muted>, sortValue: (r) => r.contact?.custom?.halle_stand ?? '' },
   { key: 'custom.hauptaussteller', label: 'Hauptaussteller', width: 220, render: (r) => <Muted>{r.contact?.custom?.hauptaussteller}</Muted>, sortValue: (r) => r.contact?.custom?.hauptaussteller ?? '' },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', width: 260, render: (r) => <Muted>{r.contact?.custom?.budgetklasse}</Muted>, sortValue: (r) => r.contact?.custom?.budgetklasse ?? '' },
+  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.contact?.custom?.groesse} />, sortValue: (r) => groesseNum(r.contact?.custom?.groesse) },
+  { key: 'custom.mitarbeiter', label: 'Mitarbeiter', width: 160, render: (r) => <Muted>{r.contact?.custom?.mitarbeiter}</Muted>, sortValue: (r) => r.contact?.custom?.mitarbeiter ?? '' },
+  { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.contact?.custom?.konzern}</Muted>, sortValue: (r) => r.contact?.custom?.konzern ?? '' },
+  { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.contact?.custom?.region}</Muted>, sortValue: (r) => r.contact?.custom?.region ?? '' },
+  { key: 'custom.messe', label: 'Liste / Messe', width: 150, render: (r) => <Muted>{r.contact?.custom?.messe}</Muted>, sortValue: (r) => r.contact?.custom?.messe ?? '' },
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [

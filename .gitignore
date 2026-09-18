@@ -49,3 +49,6 @@ ghcr.token
 # Messelisten-Exporte (lokal)
 *.numbers
 expo-real-*.json
+
+# Messelisten liegen nur lokal
+/*.csv

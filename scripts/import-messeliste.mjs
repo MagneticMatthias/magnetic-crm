@@ -43,6 +43,59 @@ const companyName = (s) => {
 };
 const cleanUrl = (u) => (u ? String(u).trim().replace(/^https?:\/\//, '').replace(/\/$/, '') : null);
 
+/* ------------------------------------------------------------------ */
+/* Datei lesen: JSON (Numbers-Export) oder CSV mit deutschen Kopfzeilen   */
+/* ------------------------------------------------------------------ */
+
+// CSV-Kopfzeile -> Feldname im Skript. Klein geschrieben, ohne Sonderzeichen.
+const HEADER_MAP = {
+  'firmenname': 'firma', 'firma': 'firma', 'unternehmen': 'firma',
+  'prio': 'prio', 'kanal': 'kanal', 'ort': 'ort', 'plz': 'plz',
+  'website': 'website', 'web': 'website',
+  'taetigkeit': 'beschreibung', 'beschreibung': 'beschreibung',
+  'notiz recherche': 'notiz', 'notiz': 'notiz',
+  'halle/stand 2026': 'halle_stand', 'halle/stand': 'halle_stand', 'halle stand': 'halle_stand',
+  'telefon': 'zentrale_telefon', 'zentrale telefon': 'zentrale_telefon',
+  'e-mail': 'zentrale_email', 'email': 'zentrale_email',
+  'ansprechpartner': 'ansprechpartner',
+  'region': 'region', 'groesse': 'groesse', 'groesse gesichert': 'groesse_gesichert',
+  'mitarbeiter ca.': 'mitarbeiter', 'mitarbeiter': 'mitarbeiter',
+  'quelle mitarbeiterzahl': 'mitarbeiter_quelle', 'konzern': 'konzern',
+  'quelle liste': 'fundstelle', 'fundstelle': 'fundstelle',
+  'standtyp': 'standtyp', 'hauptaussteller': 'hauptaussteller', 'budgetklasse': 'budgetklasse',
+  'geschaeftsfuehrung': 'geschaeftsfuehrung',
+};
+const normHeader = (h) => String(h ?? '').replace(/^\uFEFF/, '').trim().toLowerCase()
+  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+
+function parseCsv(text) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',' || c === ';') { row.push(f); f = ''; }
+    else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+    else if (c !== '\r') f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+
+function ladeZeilen(pfad) {
+  const text = readFileSync(pfad, 'utf8').replace(/^\uFEFF/, '');
+  if (!/\.csv$/i.test(pfad)) return JSON.parse(text);
+  const [kopf, ...zeilen] = parseCsv(text);
+  const felder = kopf.map((h) => HEADER_MAP[normHeader(h)] ?? null);
+  const unbekannt = kopf.filter((_, i) => !felder[i]);
+  if (unbekannt.length) console.log('Spalten ohne Zuordnung (werden ignoriert):', unbekannt.join(' | '));
+  return zeilen
+    .filter((z) => z.some((v) => String(v).trim()))
+    .map((z) => Object.fromEntries(z.map((v, i) => [felder[i], v]).filter(([k]) => k)));
+}
+
 const STAGES = [
   ['Offen', 5, '#64748b'], ['LinkedIn angeschrieben', 15, '#0a66c2'], ['E-Mail geschrieben', 15, '#8b5cf6'],
   ['Niemand rangegangen', 10, '#a1a1aa'],
@@ -88,7 +141,7 @@ function parsePersons(raw) {
 }
 
 async function main() {
-  const rows = JSON.parse(readFileSync(filePath, 'utf8'));
+  const rows = ladeZeilen(filePath);
   console.log(`${DRY ? '🔍 Probelauf' : '🚀 Import'}: ${rows.length} Zeilen aus ${filePath} als "${listName}"`);
 
   const org = (await must(sb.from('organizations').select('id, name').limit(1), 'org'))[0];
@@ -137,6 +190,9 @@ async function main() {
       messe: listName, prio: clean(r.prio), kanal: clean(r.kanal), standtyp: clean(r.standtyp),
       halle_stand: clean(r.halle_stand), hauptaussteller: clean(r.hauptaussteller),
       budgetklasse: clean(r.budgetklasse), geschaeftsfuehrung: clean(r.geschaeftsfuehrung), fundstelle: clean(r.fundstelle),
+      // Firmengroesse & Co. (electronica-Liste): klein / mittel / gross
+      groesse: clean(r.groesse), groesse_gesichert: clean(r.groesse_gesichert),
+      mitarbeiter: clean(r.mitarbeiter), konzern: clean(r.konzern), region: clean(r.region),
     };
     stats.contacts++;
     if (!DRY) await must(sb.from('contacts').insert({
@@ -186,6 +242,12 @@ async function main() {
     { entity: 'deals', name: listName, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }]] } },
     { entity: 'deals', name: `${listName} · Prio 1`, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }, { field: 'custom.prio', operator: 'eq', value: '1' }]] } },
     { entity: 'deals', name: `${listName} · noch nicht angerufen`, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }, { field: 'last_contacted_at', operator: 'is_empty', value: '' }]] } },
+    ...(rows.some((r) => clean(r.groesse)) ? [
+      { entity: 'deals', name: `${listName} · Mittelstand`, definition: { groups: [
+        [{ field: 'source', operator: 'eq', value: listName }, { field: 'custom.groesse', operator: 'eq', value: 'klein' }],
+        [{ field: 'source', operator: 'eq', value: listName }, { field: 'custom.groesse', operator: 'eq', value: 'mittel' }],
+      ] } },
+    ] : []),
   ];
   if (!DRY) {
     const have = await must(sb.from('saved_filters').select('name, entity').eq('org_id', org.id), 'filters');
