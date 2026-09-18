@@ -4,13 +4,23 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Trash2, Building2, Pencil, X } from 'lucide-react';
 import { toggleTask, deleteTask, updateTask } from '@/app/actions/crm';
-import { dateTime } from '@/lib/format';
+import { dateTime, personName, primaryPerson } from '@/lib/format';
 import { nowMs } from '@/lib/clock';
 import type { Task } from '@/lib/types';
 
 type Row = Task & {
   deal?: { id: string; title: string } | null;
-  contact?: { id: string; company: string | null } | null;
+  contact?: {
+    id: string; company: string | null;
+    persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[];
+  } | null;
+};
+
+/** "Oliver Gruß · Bayerische Hausbau" - Name zuerst, den merkt man sich. */
+const wer = (c: NonNullable<Row['contact']>) => {
+  const name = personName(primaryPerson(c.persons));
+  const firma = c.company || 'Kontakt';
+  return name ? `${name} · ${firma}` : firma;
 };
 
 const PRIORITY = ['', 'Hoch', 'Mittel', 'Niedrig'];
@@ -91,7 +101,7 @@ function TaskRow({ t, now, showContext, showContact }: {
                   className="inline-flex min-w-0 items-center gap-1 font-medium text-brand hover:underline"
                   title="Kontakt öffnen">
               <Building2 size={12} className="shrink-0" />
-              <span className="truncate">{t.contact.company || 'Kontakt'}</span>
+              <span className="truncate">{wer(t.contact)}</span>
             </Link>
           )}
           {showContext && !t.contact && t.deal && <span className="truncate">· {t.deal.title}</span>}
@@ -179,7 +189,7 @@ export default function TaskList({
   for (const t of tasks) {
     const key = t.contact?.id ?? 'ohne';
     const g = gruppen.get(key) ?? {
-      titel: t.contact?.company || (t.contact ? 'Kontakt' : 'Ohne Kontakt'),
+      titel: t.contact ? wer(t.contact) : 'Ohne Kontakt',
       kontaktId: t.contact?.id ?? null,
       tasks: [],
     };

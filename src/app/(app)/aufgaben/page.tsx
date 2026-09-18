@@ -8,7 +8,8 @@ import { nowMs, nowDate } from '@/lib/clock';
 
 type Row = Task & {
   deal: { id: string; title: string } | null;
-  contact: { id: string; company: string | null } | null;
+  contact: { id: string; company: string | null;
+             persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[] } | null;
 };
 
 export default async function TasksPage({
@@ -22,7 +23,7 @@ export default async function TasksPage({
 
   let query = supabase
     .from('tasks')
-    .select('*, deal:deals(id, title), contact:contacts(id, company)')
+    .select('*, deal:deals(id, title), contact:contacts(id, company, persons:contact_persons(first_name, last_name, is_primary))')
     .eq('org_id', orgId)
     .order('done')
     .order('due_at', { nullsFirst: false })
