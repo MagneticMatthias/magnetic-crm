@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { CalendarClock, X } from 'lucide-react';
 
 const PRESETS: { label: string; days: number }[] = [
@@ -19,6 +19,7 @@ const dateInput = (d: Date) =>
  * 9 Uhr morgens) und optional `followup_title` ins Formular.
  */
 export default function FollowUpPicker() {
+  const id = useId();
   const [iso, setIso] = useState('');
   const [aktiv, setAktiv] = useState('');
   const [datum, setDatum] = useState('');
@@ -72,10 +73,12 @@ export default function FollowUpPicker() {
         )}
       </div>
 
-      {iso && (
-        <input name="followup_title" className="input mt-2 text-[13px]"
-               placeholder="Betreff der Aufgabe (sonst „Nochmal anrufen“)" />
-      )}
+      {/* Immer sichtbar, nicht erst nach Wahl des Datums - sonst sucht man es. */}
+      <div className="mt-2">
+        <label className="label" htmlFor={`fu-title-${id}`}>Betreff der Wiedervorlage</label>
+        <input id={`fu-title-${id}`} name="followup_title" className="input text-[13px]"
+               placeholder={iso ? 'z. B. Video 2027 ansprechen (leer = „Nochmal anrufen“)' : 'Erst oben ein Datum wählen'} />
+      </div>
     </div>
   );
 }
