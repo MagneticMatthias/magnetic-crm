@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
-  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
+  ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip, Share2,
 } from 'lucide-react';
 import {
   loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
@@ -330,7 +330,17 @@ export default function DetailPanel({
         <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <h2 className="min-w-0 truncate text-base font-semibold sm:text-xl">{loading ? 'Laden …' : title}</h2>
-            {!loading && title && <CopyButton text={title} label="Namen kopieren" />}
+            {!loading && title && (
+              <>
+                <CopyButton text={title} label="Namen kopieren" />
+                {/* Nur ein Link auf die LinkedIn-Suche - kein Auslesen, kein Risiko fuer den Account */}
+                <a href={`https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(contact?.company || title)}`}
+                   target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
+                   className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted transition hover:bg-surface-2 hover:text-[#0a66c2]">
+                  <Share2 size={15} />
+                </a>
+              </>
+            )}
           </div>
 
           <div className="flex items-center overflow-hidden rounded-lg">
