@@ -22,6 +22,7 @@ import TaskList from '@/components/TaskList';
 import TaskComposer from '@/components/TaskComposer';
 import NoteEditor from '@/components/NoteEditor';
 import CallFlowCard from '@/components/CallFlowCard';
+import CopyButton from '@/components/CopyButton';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { COUNTRIES, DIAL_CODES, LEAD_SOURCES } from '@/lib/labels';
 import { dateTime, dateOnly, eur, initials, personName, primaryPerson, phoneOf } from '@/lib/format';
@@ -327,7 +328,10 @@ export default function DetailPanel({
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-bg shadow-2xl sm:max-w-[820px]">
         {/* Kopf */}
         <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
-          <h2 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-xl">{loading ? 'Laden …' : title}</h2>
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            <h2 className="min-w-0 truncate text-base font-semibold sm:text-xl">{loading ? 'Laden …' : title}</h2>
+            {!loading && title && <CopyButton text={title} label="Namen kopieren" />}
+          </div>
 
           <div className="flex items-center overflow-hidden rounded-lg">
             <a
