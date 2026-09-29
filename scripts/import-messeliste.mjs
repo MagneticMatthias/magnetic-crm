@@ -63,7 +63,7 @@ const HEADER_MAP = {
   'quelle mitarbeiterzahl': 'mitarbeiter_quelle', 'konzern': 'konzern',
   'quelle liste': 'fundstelle', 'fundstelle': 'fundstelle',
   'standtyp': 'standtyp', 'hauptaussteller': 'hauptaussteller', 'budgetklasse': 'budgetklasse',
-  'geschaeftsfuehrung': 'geschaeftsfuehrung',
+  'geschaeftsfuehrung': 'geschaeftsfuehrung', 'aussteller 2026': 'aussteller_2026',
 };
 const normHeader = (h) => String(h ?? '').replace(/^\uFEFF/, '').trim().toLowerCase()
   .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
@@ -193,6 +193,7 @@ async function main() {
       // Firmengroesse & Co. (electronica-Liste): klein / mittel / gross
       groesse: clean(r.groesse), groesse_gesichert: clean(r.groesse_gesichert),
       mitarbeiter: clean(r.mitarbeiter), konzern: clean(r.konzern), region: clean(r.region),
+      aussteller_2026: clean(r.aussteller_2026),
     };
     stats.contacts++;
     if (!DRY) await must(sb.from('contacts').insert({

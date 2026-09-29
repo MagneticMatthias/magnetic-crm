@@ -33,7 +33,7 @@ import { dialHref } from '@/lib/dial';
 type Tab = 'info' | 'activities' | 'notes';
 
 const CUSTOM_LABEL: Record<string, string> = {
-  prio: 'Prio', kanal: 'Kanal', standtyp: 'Standtyp', halle_stand: 'Halle / Stand',
+  prio: 'Prio', kanal: 'Kanal', standtyp: 'Standtyp', halle_stand: 'Halle / Stand', aussteller_2026: 'Aussteller 2026',
   hauptaussteller: 'Hauptaussteller', budgetklasse: 'Budgetklasse', geschaeftsfuehrung: 'Geschäftsführung',
   groesse: 'Firmengröße', groesse_gesichert: 'Größe gesichert', mitarbeiter: 'Mitarbeiter ca.', konzern: 'Konzern', region: 'Region',
   fundstelle: 'Fundstelle', messe: 'Messe',

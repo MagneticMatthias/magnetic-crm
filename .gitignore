@@ -52,3 +52,6 @@ expo-real-*.json
 
 # Messelisten liegen nur lokal
 /*.csv
+
+# Zwischenspeicher des electronica-Abgleichs (lokal)
+electronica-2026-*.json
