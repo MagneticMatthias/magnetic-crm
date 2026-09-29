@@ -8,7 +8,7 @@ import {
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  Search, Filter as FilterIcon, ChevronUp, ChevronDown, Pencil, Plus, Trash2, GripVertical, ArrowUp, ArrowDown,
+  Search, Filter as FilterIcon, ChevronUp, ChevronDown, Plus, Trash2, GripVertical, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import FilterBuilder from '@/components/FilterBuilder';
 import ColumnPicker from './ColumnPicker';
@@ -16,6 +16,7 @@ import type { ColumnDef } from './columns';
 import { countRules, type FieldDef } from '@/lib/filters';
 import type { FilterDefinition, SavedFilter } from '@/lib/types';
 import { usePresence } from '@/lib/presence';
+import { deleteSavedFilter } from '@/app/actions/records';
 import { initials } from '@/lib/format';
 
 type Layout = { order: string[]; widths: Record<string, number>; sort: { key: string; dir: 'asc' | 'desc' } | null };
@@ -195,13 +196,24 @@ export default function RecordTable<T extends { id: string }>({
               <div className="fixed inset-0 z-10" onClick={() => setFilterOpen('closed')} />
               <div className="card absolute left-0 z-20 mt-1.5 w-64 p-1.5 shadow-xl">
                 {savedFilters.map((f) => (
-                  <button key={f.id} type="button"
-                          onClick={() => { setParam('filter', encodeURIComponent(JSON.stringify(f.definition))); setFilterOpen('closed'); }}
-                          className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-2">
-                    <FilterIcon size={13} className="text-muted" />
-                    <span className="flex-1 truncate">{f.name}</span>
-                    <Pencil size={12} className="text-muted" />
-                  </button>
+                  <div key={f.id} className="group flex items-center rounded-md hover:bg-surface-2">
+                    <button type="button"
+                            onClick={() => { setParam('filter', encodeURIComponent(JSON.stringify(f.definition))); setFilterOpen('closed'); }}
+                            className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px]">
+                      <FilterIcon size={13} className="shrink-0 text-muted" />
+                      <span className="truncate">{f.name}</span>
+                    </button>
+                    <button type="button" aria-label="Gespeicherten Filter löschen" title="Filter löschen"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!window.confirm(`Filter „${f.name}“ löschen?`)) return;
+                              await deleteSavedFilter(f.id);
+                              router.refresh();
+                            }}
+                            className="mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted/50 hover:bg-lose/10 hover:text-lose">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ))}
                 {activeRules > 0 && (
                   <button type="button" onClick={() => { setParam('filter', null); setFilterOpen('closed'); }}
