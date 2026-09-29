@@ -259,6 +259,6 @@ async function main() {
 
   console.log(`\n✅ ${DRY ? 'Würde anlegen' : 'Angelegt'}: ${stats.contacts} Kontakte, ${stats.persons} Personen, ${stats.deals} Deals,`);
   console.log(`   ${stats.linkedin} davon LinkedIn angeschrieben, ${stats.notes} Notizen · ${stats.skipped} bereits vorhandene Firmen übersprungen`);
-  console.log(`   Filter: "${listName}", "${listName} · Prio 1", "${listName} · noch nicht angerufen"`);
+  console.log(`   Filter: ${filters.map((f) => `"${f.name}"`).join(', ')}`);
 }
 main().catch((e) => { console.error('❌', e.message); process.exit(1); });
