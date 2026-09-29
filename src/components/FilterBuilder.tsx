@@ -194,21 +194,31 @@ export default function FilterBuilder({
       </div>
 
       {saving && (
-        <div className="mb-4 flex gap-2 rounded-lg bg-surface-2 p-2.5">
-          <input className="input !py-1.5 text-[13px]" placeholder="Name des Filters"
-                 value={name} onChange={(e) => setName(e.target.value)} />
-          <button
-            type="button"
-            className="btn-primary !py-1.5 text-[13px]"
-            disabled={!name.trim()}
-            onClick={async () => {
-              await onSave(name.trim(), def);
-              setName('');
-              setSaving(false);
-            }}
-          >
-            Speichern
-          </button>
+        <div className="mb-4 rounded-lg border border-brand/40 bg-brand-soft/40 p-3">
+          <p className="mb-1.5 text-xs font-medium text-brand">Namen eingeben und mit Enter oder Speichern bestätigen</p>
+          <div className="flex gap-2">
+            <input className="input !py-1.5 text-[13px]" placeholder="z. B. electronica Telefon" autoFocus
+                   value={name} onChange={(e) => setName(e.target.value)}
+                   onKeyDown={async (e) => {
+                     if (e.key === 'Enter' && name.trim()) {
+                       e.preventDefault();
+                       await onSave(name.trim(), def); setName(''); setSaving(false);
+                     }
+                     if (e.key === 'Escape') setSaving(false);
+                   }} />
+            <button
+              type="button"
+              className="btn-primary !py-1.5 text-[13px]"
+              disabled={!name.trim()}
+              onClick={async () => {
+                await onSave(name.trim(), def);
+                setName('');
+                setSaving(false);
+              }}
+            >
+              Speichern
+            </button>
+          </div>
         </div>
       )}
 
