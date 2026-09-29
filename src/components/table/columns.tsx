@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import LinkedInIcon from '@/components/LinkedInIcon';
-import { setDealStage } from '@/app/actions/records';
+import { setDealStage, updateContactCustom } from '@/app/actions/records';
 import { useStages } from './StagesContext';
 import { Badge } from '@/components/Badge';
 import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
@@ -174,8 +174,74 @@ const Web = ({ value }: { value: string | null | undefined }) => {
 const LastContact = ({ value }: { value: string | null | undefined }) =>
   value ? <span>{dateTime(value)}</span> : <span className="chip bg-surface-2 text-muted">noch nie</span>;
 
-const Kanal = ({ value }: { value: string | null | undefined }) =>
-  value ? <Badge>{value === 'A' ? 'A · LinkedIn' : 'B · Telefon'}</Badge> : <span className="text-muted">–</span>;
+const KANAL_OPTIONEN = [
+  { value: 'A', label: 'A · LinkedIn' },
+  { value: 'B', label: 'B · Telefon' },
+  { value: '', label: 'kein Kanal' },
+];
+const GROESSE_OPTIONEN = ['klein', 'mittel', 'groß', 'unbekannt'].map((v) => ({ value: v, label: v }));
+
+/**
+ * Zusatzfeld direkt in der Zeile umstellen (Kanal, Firmengroesse). Gleiches
+ * Muster wie die Phase: Menue am Body, Klick geht nicht an die Zeile.
+ */
+function CustomPick({ contactId, feld, value, optionen, render }: {
+  contactId: string | null | undefined;
+  feld: string;
+  value: string | null | undefined;
+  optionen: { value: string; label: string }[];
+  render: (v: string | null | undefined) => ReactNode;
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (!contactId) return <>{render(value)}</>;
+
+  const oeffnen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const hoehe = optionen.length * 36 + 12;
+    setPos({
+      top: window.innerHeight - r.bottom < hoehe ? Math.max(8, r.top - hoehe - 4) : r.bottom + 4,
+      left: Math.min(r.left, window.innerWidth - 200),
+    });
+  };
+  const waehlen = (v: string) => {
+    setPos(null);
+    if ((v || null) === (value || null)) return;
+    startTransition(() => updateContactCustom(contactId, feld, v || null));
+  };
+
+  return (
+    <>
+      <button type="button" onClick={oeffnen} disabled={pending} title="Ändern"
+              className="inline-flex max-w-full items-center gap-1 rounded-md text-left hover:bg-surface-2 disabled:opacity-50">
+        <span className="truncate">{render(value)}</span>
+        <ChevronDown size={12} className="shrink-0 text-muted" />
+      </button>
+      {pos && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setPos(null); }} />
+          <div className="card fixed z-50 w-48 p-1.5 shadow-xl" onClick={(e) => e.stopPropagation()}
+               style={{ top: pos.top, left: pos.left }}>
+            {optionen.map((o) => (
+              <button key={o.value} type="button" onClick={() => waehlen(o.value)}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-surface-2">
+                <span className="flex-1 truncate">{o.label}</span>
+                {(o.value || null) === (value || null) && <Check size={13} className="shrink-0 text-brand" />}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+const KanalBadge = (v: string | null | undefined) =>
+  v ? <Badge>{v === 'A' ? 'A · LinkedIn' : 'B · Telefon'}</Badge> : <span className="text-muted">–</span>;
+const Kanal = ({ value, contactId }: { value: string | null | undefined; contactId?: string | null }) =>
+  <CustomPick contactId={contactId} feld="kanal" value={value} optionen={KANAL_OPTIONEN} render={KanalBadge} />;
 
 /**
  * Phase in der Tabelle: ein Tippen oeffnet direkt die Phasenliste, ohne
@@ -257,8 +323,10 @@ const prioNum = (v: string | null | undefined) => (v ? Number(v) || 9 : 9);
 /** klein < mittel < gross; Unbekanntes ans Ende */
 const groesseNum = (v: string | null | undefined) =>
   ({ klein: 1, mittel: 2, 'groß': 3, gross: 3 } as Record<string, number>)[(v ?? '').toLowerCase()] ?? 9;
-const Groesse = ({ value }: { value: string | null | undefined }) =>
+const GroesseBadge = (value: string | null | undefined) =>
   value ? <Badge tone={value === 'klein' ? 'win' : value === 'mittel' ? 'warn' : 'muted'}>{value}</Badge> : <span className="text-muted">–</span>;
+const Groesse = ({ value, contactId }: { value: string | null | undefined; contactId?: string | null }) =>
+  <CustomPick contactId={contactId} feld="groesse" value={value} optionen={GROESSE_OPTIONEN} render={GroesseBadge} />;
 const pname = (persons?: { first_name: string | null; last_name: string | null; is_primary: boolean }[] | null) =>
   personName(primaryPerson(persons)) || '';
 
@@ -289,12 +357,12 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'country', label: 'Land', width: 120, render: (r) => <Muted>{r.country}</Muted>, sortValue: (r) => r.country ?? '' },
   { key: 'opener_kuerzel', label: 'Opener-Kürzel', width: 110, render: (r) => <Muted>{r.opener_kuerzel}</Muted>, sortValue: (r) => r.opener_kuerzel ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.custom?.prio) },
-  { key: 'custom.kanal', label: 'Kanal', width: 120, render: (r) => <Kanal value={r.custom?.kanal} />, sortValue: (r) => r.custom?.kanal ?? 'Z' },
+  { key: 'custom.kanal', label: 'Kanal', width: 140, render: (r) => <Kanal value={r.custom?.kanal} contactId={r.id} />, sortValue: (r) => r.custom?.kanal ?? 'Z' },
   { key: 'custom.standtyp', label: 'Standtyp', width: 160, render: (r) => <Muted>{r.custom?.standtyp}</Muted>, sortValue: (r) => r.custom?.standtyp ?? '' },
   { key: 'custom.halle_stand', label: 'Halle / Stand', width: 110, render: (r) => <Muted>{r.custom?.halle_stand}</Muted>, sortValue: (r) => r.custom?.halle_stand ?? '' },
   { key: 'custom.hauptaussteller', label: 'Hauptaussteller', width: 220, render: (r) => <Muted>{r.custom?.hauptaussteller}</Muted>, sortValue: (r) => r.custom?.hauptaussteller ?? '' },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', width: 260, render: (r) => <Muted>{r.custom?.budgetklasse}</Muted>, sortValue: (r) => r.custom?.budgetklasse ?? '' },
-  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.custom?.groesse} />, sortValue: (r) => groesseNum(r.custom?.groesse) },
+  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.custom?.groesse} contactId={r.id} />, sortValue: (r) => groesseNum(r.custom?.groesse) },
   { key: 'custom.mitarbeiter', label: 'Mitarbeiter', width: 160, render: (r) => <Muted>{r.custom?.mitarbeiter}</Muted>, sortValue: (r) => r.custom?.mitarbeiter ?? '' },
   { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.custom?.konzern}</Muted>, sortValue: (r) => r.custom?.konzern ?? '' },
   { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.custom?.region}</Muted>, sortValue: (r) => r.custom?.region ?? '' },
@@ -312,7 +380,7 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
   { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} pipelineId={r.pipeline_id} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },
-  { key: 'custom.kanal', label: 'Kanal', width: 120, render: (r) => <Kanal value={r.contact?.custom?.kanal} />, sortValue: (r) => r.contact?.custom?.kanal ?? 'Z' },
+  { key: 'custom.kanal', label: 'Kanal', width: 140, render: (r) => <Kanal value={r.contact?.custom?.kanal} contactId={r.contact_id} />, sortValue: (r) => r.contact?.custom?.kanal ?? 'Z' },
   { key: 'persons', label: 'Ansprechpartner', width: 200, render: (r) => <PrimaryPerson persons={r.contact?.persons} />, sortValue: (r) => pname(r.contact?.persons) },
   { key: 'phone', label: 'Telefon', width: 170, render: (r) => <Tel value={phoneOf(r.contact?.persons)} />, sortValue: (r) => phoneOf(r.contact?.persons) ?? '' },
   { key: 'dial', label: 'Anrufen', width: 90, render: (r) => <DialButton value={phoneOf(r.contact?.persons)} />, sortValue: (r) => (phoneOf(r.contact?.persons) ? 0 : 1) },
@@ -330,7 +398,7 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'custom.halle_stand', label: 'Halle / Stand', width: 110, render: (r) => <Muted>{r.contact?.custom?.halle_stand}</Muted>, sortValue: (r) => r.contact?.custom?.halle_stand ?? '' },
   { key: 'custom.hauptaussteller', label: 'Hauptaussteller', width: 220, render: (r) => <Muted>{r.contact?.custom?.hauptaussteller}</Muted>, sortValue: (r) => r.contact?.custom?.hauptaussteller ?? '' },
   { key: 'custom.budgetklasse', label: 'Budgetklasse', width: 260, render: (r) => <Muted>{r.contact?.custom?.budgetklasse}</Muted>, sortValue: (r) => r.contact?.custom?.budgetklasse ?? '' },
-  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.contact?.custom?.groesse} />, sortValue: (r) => groesseNum(r.contact?.custom?.groesse) },
+  { key: 'custom.groesse', label: 'Firmengröße', width: 110, render: (r) => <Groesse value={r.contact?.custom?.groesse} contactId={r.contact_id} />, sortValue: (r) => groesseNum(r.contact?.custom?.groesse) },
   { key: 'custom.mitarbeiter', label: 'Mitarbeiter', width: 160, render: (r) => <Muted>{r.contact?.custom?.mitarbeiter}</Muted>, sortValue: (r) => r.contact?.custom?.mitarbeiter ?? '' },
   { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.contact?.custom?.konzern}</Muted>, sortValue: (r) => r.contact?.custom?.konzern ?? '' },
   { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.contact?.custom?.region}</Muted>, sortValue: (r) => r.contact?.custom?.region ?? '' },

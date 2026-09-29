@@ -101,6 +101,16 @@ const CONTACT_FIELDS = new Set([
   'company', 'website', 'postal_code', 'city', 'country', 'lead_source', 'opener_kuerzel', 'notes', 'owner_id',
 ]);
 
+/** Ein Zusatzfeld (custom.*) am Kontakt setzen, z. B. kanal oder groesse. */
+export async function updateContactCustom(contactId: string, key: string, value: string | null) {
+  const { supabase } = await ctx();
+  const { data } = await supabase.from('contacts').select('custom').eq('id', contactId).single();
+  const custom = { ...((data?.custom as Record<string, unknown>) ?? {}), [key]: value?.trim() || null };
+  const { error } = await supabase.from('contacts').update({ custom }).eq('id', contactId);
+  if (error) throw new Error(error.message);
+  refresh();
+}
+
 export async function updateContactFields(contactId: string, patch: Record<string, string | null>) {
   const { supabase } = await ctx();
   const clean: Record<string, string | null> = {};
