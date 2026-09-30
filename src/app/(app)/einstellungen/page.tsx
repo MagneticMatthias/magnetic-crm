@@ -25,7 +25,7 @@ export default async function SettingsPage() {
          { data: emailSettings }, { data: templates }, { data: mailStates }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
     supabase.from('pipelines').select('*').eq('org_id', orgId).order('position'),
-    supabase.from('pipeline_stages').select('*').order('position'),
+    supabase.from('pipeline_stages').select('*').order('position').order('name'),
     supabase.from('profiles').select('*').eq('org_id', orgId).order('full_name'),
     supabase.from('email_settings').select('*').eq('org_id', orgId).maybeSingle(),
     supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
@@ -95,21 +95,30 @@ export default async function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                {stageList.filter((s) => s.pipeline_id === p.id).map((s) => (
-                  <form key={s.id} action={updateStage}
-                        className="flex flex-wrap items-end gap-2 rounded-lg border border-line p-2.5">
-                    <input type="hidden" name="id" value={s.id} />
-                    {/* Reihenfolge: bestimmt die Reiter ueber der Tabelle */}
-                    <div className="flex flex-col gap-0.5 pb-1">
-                      <button formAction={moveStage} name="dir" value="up" aria-label="Phase nach oben"
-                              className="grid h-4 w-6 place-items-center rounded border border-line text-muted hover:bg-surface-2 hover:text-brand">
-                        <ChevronUp size={12} />
-                      </button>
-                      <button formAction={moveStage} name="dir" value="down" aria-label="Phase nach unten"
-                              className="grid h-4 w-6 place-items-center rounded border border-line text-muted hover:bg-surface-2 hover:text-brand">
-                        <ChevronDown size={12} />
-                      </button>
+                {stageList.filter((s) => s.pipeline_id === p.id).map((s, idx, arr) => (
+                  <div key={s.id} className="flex items-stretch gap-2 rounded-lg border border-line p-2.5">
+                    {/* Reihenfolge: eigene kleine Formulare mit festen Werten, damit
+                        die Richtung nicht vom Absende-Knopf abhaengt. */}
+                    <div className="flex flex-col justify-center gap-1">
+                      <form action={moveStage}>
+                        <input type="hidden" name="id" value={s.id} />
+                        <input type="hidden" name="dir" value="up" />
+                        <button aria-label="Phase nach oben" title="Nach oben" disabled={idx === 0}
+                                className="grid h-7 w-8 place-items-center rounded-md border border-line text-muted hover:bg-surface-2 hover:text-brand disabled:opacity-30">
+                          <ChevronUp size={14} />
+                        </button>
+                      </form>
+                      <form action={moveStage}>
+                        <input type="hidden" name="id" value={s.id} />
+                        <input type="hidden" name="dir" value="down" />
+                        <button aria-label="Phase nach unten" title="Nach unten" disabled={idx === arr.length - 1}
+                                className="grid h-7 w-8 place-items-center rounded-md border border-line text-muted hover:bg-surface-2 hover:text-brand disabled:opacity-30">
+                          <ChevronDown size={14} />
+                        </button>
+                      </form>
                     </div>
+                  <form action={updateStage} className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
+                    <input type="hidden" name="id" value={s.id} />
                     <div className="min-w-[140px] flex-1">
                       <label className="label">Phase</label>
                       <input name="name" className="input" defaultValue={s.name} />
@@ -133,6 +142,7 @@ export default async function SettingsPage() {
                       <Trash2 size={15} />
                     </button>
                   </form>
+                  </div>
                 ))}
 
                 <form action={createStage} className="flex flex-wrap items-end gap-2 pt-1">

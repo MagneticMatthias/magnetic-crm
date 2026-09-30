@@ -442,7 +442,8 @@ export async function moveStage(formData: FormData) {
   if (!stage) return;
 
   const { data: list } = await supabase
-    .from('pipeline_stages').select('id').eq('pipeline_id', stage.pipeline_id).order('position');
+    .from('pipeline_stages').select('id').eq('pipeline_id', stage.pipeline_id)
+    .order('position').order('name');
   if (!list) return;
 
   const i = list.findIndex((s) => s.id === id);
@@ -452,7 +453,8 @@ export async function moveStage(formData: FormData) {
   const neu = [...list];
   [neu[i], neu[j]] = [neu[j], neu[i]];
   for (const [pos, s] of neu.entries()) {
-    await supabase.from('pipeline_stages').update({ position: pos }).eq('id', s.id);
+    const { error } = await supabase.from('pipeline_stages').update({ position: pos }).eq('id', s.id);
+    if (error) throw new Error(`Phase konnte nicht verschoben werden: ${error.message}`);
   }
   revalidatePath('/einstellungen');
   revalidatePath('/pipelines');
