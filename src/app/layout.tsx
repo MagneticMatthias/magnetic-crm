@@ -7,7 +7,10 @@ export const metadata: Metadata = {
   applicationName: 'Magnetic_CRM',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: [{ url: '/icons/favicon-32.png', sizes: '32x32' }, { url: '/icons/icon-192.png', sizes: '192x192' }],
+    icon: [
+      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+    ],
     apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: { capable: true, title: 'Magnetic_CRM', statusBarStyle: 'default' },

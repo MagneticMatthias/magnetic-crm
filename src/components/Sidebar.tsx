@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { AppLogo } from '@/components/AppLogo';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -70,9 +71,7 @@ export default function Sidebar({
                     ${open ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex items-center gap-2 px-5 pb-3 pt-5 pl-14 md:pl-5">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-brand to-indigo-500 text-[13px] font-bold text-white">
-            M
-          </span>
+          <AppLogo className="h-7 w-7 shrink-0" />
           <span className="text-[15px] font-bold tracking-tight">Magnetic_CRM</span>
         </div>
 
