@@ -17,6 +17,6 @@ docker compose up -d --remove-orphans
 after=$(docker inspect --format '{{.Image}}' magnetic-crm 2>/dev/null || echo none)
 
 if [ "$before" != "$after" ]; then
-  echo "$(date '+%F %T') Magnetic_CRM aktualisiert"
+  echo "$(date '+%F %T') Magnetic CRM aktualisiert"
   docker image prune -f >/dev/null
 fi

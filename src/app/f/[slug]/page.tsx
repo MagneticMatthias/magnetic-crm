@@ -26,7 +26,7 @@ export default async function PublicFormPage({ params }: { params: Promise<{ slu
           successMessage={form.success_message ?? 'Danke! Wir melden uns in Kürze.'}
         />
         <p className="mt-6 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Formular erstellt von</p>
-        <p className="mt-1 text-center text-sm font-bold text-muted">Magnetic_CRM</p>
+        <p className="mt-1 text-center text-sm font-bold text-muted">Magnetic CRM</p>
       </div>
     </div>
   );

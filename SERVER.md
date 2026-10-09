@@ -1,4 +1,4 @@
-# Magnetic_CRM auf dem eigenen Server
+# Magnetic CRM auf dem eigenen Server
 
 ## So funktioniert das Deployment
 

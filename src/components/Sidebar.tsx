@@ -72,7 +72,7 @@ export default function Sidebar({
       >
         <div className="flex items-center gap-2 px-5 pb-3 pt-5 pl-14 md:pl-5">
           <AppLogo className="h-7 w-7 shrink-0" />
-          <span className="text-[15px] font-bold tracking-tight">Magnetic_CRM</span>
+          <span className="text-[15px] font-bold tracking-tight">Magnetic CRM</span>
         </div>
 
         <div className="mx-3 mb-2 flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2.5">

@@ -47,7 +47,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <AppLogo className="mx-auto mb-3 block h-11 w-11" />
-          <h1 className="text-xl font-semibold">Magnetic_CRM</h1>
+          <h1 className="text-xl font-semibold">Magnetic CRM</h1>
           <p className="text-sm text-muted mt-1">CRM nach dem Setter-Closer-Prinzip</p>
         </div>
 

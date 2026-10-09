@@ -4,7 +4,7 @@ Das Skript `scripts/migrate-projekttool.mjs` liest Kunden, Ansprechpartner,
 Projekte, Akquise-Listen mit Leads (inkl. Status-Verlauf und Wiedervorlagen)
 und die Kontaktliste aus PocketBase und legt sie im CRM an.
 
-| Projekttool | Magnetic_CRM |
+| Projekttool | Magnetic CRM |
 |---|---|
 | Kunde + Ansprechpartner | Kontakt mit Personen (Leadherkunft „Bestandskunde") + Deal in **Bestandskunden / Aktiv** |
 | Offener Faden | Deal in **Angebot / Closing**, Phase nach Stufe (Erstgespräch / Angebot verschickt / Mündliche Zusage), Wert, nächster Schritt, Fälligkeit; Kunde über den Titel zugeordnet |

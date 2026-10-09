@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Magnetic_CRM',
+  title: 'Magnetic CRM',
   description: 'CRM für Vertriebsteams nach dem Setter-Closer-Prinzip',
-  applicationName: 'Magnetic_CRM',
+  applicationName: 'Magnetic CRM',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     ],
     apple: '/icons/apple-touch-icon.png',
   },
-  appleWebApp: { capable: true, title: 'Magnetic_CRM', statusBarStyle: 'default' },
+  appleWebApp: { capable: true, title: 'Magnetic CRM', statusBarStyle: 'default' },
 };
 
 export const viewport: Viewport = {

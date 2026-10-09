@@ -1,4 +1,4 @@
-# Magnetic_CRM
+# Magnetic CRM
 
 Ein schlankes CRM für Vertriebsteams nach dem **Setter-Closer-Prinzip**.
 Next.js (App Router) + Supabase (Auth, Postgres, Row Level Security, Realtime).

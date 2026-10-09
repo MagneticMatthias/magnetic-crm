@@ -103,7 +103,7 @@ export async function dealAnProjekttool(dealId: string): Promise<{ ok: true; pro
       });
     }
     await pb(cfg.url, token, 'collections/status_updates/records', {
-      method: 'POST', body: JSON.stringify({ project: project.id, body: 'Aus Magnetic_CRM übernommen', done: false, owner }),
+      method: 'POST', body: JSON.stringify({ project: project.id, body: 'Aus Magnetic CRM übernommen', done: false, owner }),
     });
 
     // 5) Am Deal merken

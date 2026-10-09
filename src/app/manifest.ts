@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Magnetic_CRM',
+    name: 'Magnetic CRM',
     short_name: 'Magnetic',
     description: 'CRM für Vertriebsteams nach dem Setter-Closer-Prinzip',
     start_url: '/dashboard',

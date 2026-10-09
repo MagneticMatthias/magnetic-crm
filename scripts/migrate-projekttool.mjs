@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Uebernimmt aus dem Projekttool (PocketBase) nach Magnetic_CRM (Supabase):
+ * Uebernimmt aus dem Projekttool (PocketBase) nach Magnetic CRM (Supabase):
  *   - Kunden mit Ansprechpartnern        -> Kontakte + Deal "Bestandskunden / Aktiv"
  *   - offene Faeden (threads, done=false) -> Deals in "Angebot / Closing" nach Stufe
  *   - Projekte (alle)                     -> Deals; abgeschlossene als gewonnen (Auswertung)

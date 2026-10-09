@@ -1,4 +1,4 @@
-# Magnetic_CRM auf dem NAS. Das Image wird von GitHub gebaut (build-image.yml)
+# Magnetic CRM auf dem NAS. Das Image wird von GitHub gebaut (build-image.yml)
 # und hier nur noch gezogen - kein Build mehr auf dem NAS.
 services:
   crm:

@@ -1,4 +1,4 @@
-/** Trichter-Logo von Magnetic_CRM (gleiche Form wie App-Icon und Favicon). */
+/** Trichter-Logo von Magnetic CRM (gleiche Form wie App-Icon und Favicon). */
 export function AppLogo({ className = 'h-7 w-7' }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden="true">

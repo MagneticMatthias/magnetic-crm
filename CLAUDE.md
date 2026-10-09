@@ -1,4 +1,4 @@
-# Magnetic_CRM
+# Magnetic CRM
 
 Next.js 16 (App Router) + Supabase. Deutschsprachiges Vertriebs-CRM nach dem Setter-Closer-Prinzip.
 
@@ -17,7 +17,7 @@ Next.js 16 (App Router) + Supabase. Deutschsprachiges Vertriebs-CRM nach dem Set
 ## Regeln
 - Alle Tabellen mit RLS auf `org_id`; neue Tabellen brauchen Policy + Grants (siehe 06_grants.sql)
 - Keine Secrets im Repo: `.env.local`, `migrate.env` sind ignoriert
-- UI-Texte auf Deutsch, Produktname "Magnetic_CRM"
+- UI-Texte auf Deutsch, Produktname "Magnetic CRM"
 
 ## Offene Aufgabe: electronica 2026 abgleichen (Stand 29.09.2026)
 
