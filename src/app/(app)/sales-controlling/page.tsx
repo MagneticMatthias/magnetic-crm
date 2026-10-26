@@ -2,30 +2,39 @@ import { ctx } from '@/lib/ctx';
 import { PageHeader, Stat } from '@/components/ui';
 import { RevenueChart, SourceChart, FunnelBars } from '@/components/Charts';
 import { eur, pct, num, duration } from '@/lib/format';
-import { CALL_KIND_LABEL, REACHED_OUTCOMES } from '@/lib/labels';
-import type { Activity, CallKind, Deal, Pipeline, Profile, Stage } from '@/lib/types';
+import { CALL_OUTCOME_LABEL, REACHED_OUTCOMES } from '@/lib/labels';
+import type { Activity, CallOutcome, Deal, Pipeline, Profile, Stage } from '@/lib/types';
 import { daysAgoIso, nowDate } from '@/lib/clock';
 
 export default async function ReportsPage({
   searchParams,
-}: { searchParams: Promise<{ tage?: string }> }) {
-  const { tage } = await searchParams;
+}: { searchParams: Promise<{ tage?: string; p?: string }> }) {
+  const { tage, p: pipeParam } = await searchParams;
   const days = Number(tage ?? 90);
   const since = daysAgoIso(days);
 
   const { supabase, orgId } = await ctx();
 
-  const [{ data: deals }, { data: activities }, { data: team }, { data: pipelines }, { data: stages }] =
+  const [{ data: deals }, { data: activities }, { data: team }, { data: pipelines }, { data: stages }, { data: dealPipes }] =
     await Promise.all([
       supabase.from('deals').select('*').eq('org_id', orgId).gte('created_at', since),
       supabase.from('activities').select('*').eq('org_id', orgId).gte('occurred_at', since).limit(5000),
       supabase.from('profiles').select('*').eq('org_id', orgId),
       supabase.from('pipelines').select('*').eq('org_id', orgId).eq('archived', false).order('position'),
       supabase.from('pipeline_stages').select('*').order('position'),
+      supabase.from('deals').select('id, pipeline_id').eq('org_id', orgId),
     ]);
 
-  const allDeals = (deals ?? []) as Deal[];
-  const acts = (activities ?? []) as Activity[];
+  // Pipeline-Auswahl: Standard ist die Kaltakquise, damit Bestandsprojekte
+  // aus dem Projekttool die Akquise-Zahlen nicht verfaelschen.
+  const pipeList = (pipelines ?? []) as Pipeline[];
+  const kalt = pipeList.find((pl) => pl.name.toLowerCase() === 'kaltakquise');
+  const selected = pipeParam === 'alle' ? null : pipeList.find((pl) => pl.id === pipeParam) ?? kalt ?? null;
+  const pipeOfDeal = new Map((dealPipes ?? []).map((d) => [d.id as string, d.pipeline_id as string]));
+  const inPipe = (pipelineId?: string | null) => !selected || pipelineId === selected.id;
+
+  const allDeals = ((deals ?? []) as Deal[]).filter((d) => inPipe(d.pipeline_id));
+  const acts = ((activities ?? []) as Activity[]).filter((a) => !selected || (a.deal_id && inPipe(pipeOfDeal.get(a.deal_id))));
   const teamList = (team ?? []) as Profile[];
   const stageList = (stages ?? []) as Stage[];
 
@@ -85,7 +94,7 @@ export default async function ReportsPage({
   }).sort((a, b) => b.umsatz - a.umsatz);
 
   // Funnel je Pipeline
-  const funnels = ((pipelines ?? []) as Pipeline[]).map((p) => ({
+  const funnels = pipeList.filter((pl) => inPipe(pl.id)).map((p) => ({
     pipeline: p,
     rows: stageList.filter((s) => s.pipeline_id === p.id).map((s) => {
       const inStage = allDeals.filter((d) => d.stage_id === s.id);
@@ -100,9 +109,17 @@ export default async function ReportsPage({
 
   return (
     <>
-      <PageHeader title="Berichte" subtitle={`Sales-Controlling über ${days} Tage`}>
+      <PageHeader title="Sales-Controlling"
+                  subtitle={`${selected ? selected.name : 'Alle Pipelines'} · letzte ${days} Tage`}>
+        {[...pipeList.map((pl) => ({ id: pl.id, name: pl.name })), { id: 'alle', name: 'Alle' }].map((o) => (
+          <a key={o.id} href={`/sales-controlling?tage=${days}&p=${o.id}`}
+             className={(selected ? selected.id : 'alle') === o.id ? 'btn-primary' : 'btn-ghost'}>
+            {o.name}
+          </a>
+        ))}
+        <span className="mx-1 h-6 w-px bg-line" />
         {[30, 90, 365].map((d) => (
-          <a key={d} href={`/berichte?tage=${d}`} className={d === days ? 'btn-primary' : 'btn-ghost'}>
+          <a key={d} href={`/sales-controlling?tage=${d}&p=${selected ? selected.id : 'alle'}`} className={d === days ? 'btn-primary' : 'btn-ghost'}>
             {d} Tage
           </a>
         ))}
@@ -131,21 +148,19 @@ export default async function ReportsPage({
         </div>
 
         <div className="card p-4">
-          <h2 className="mb-4 text-sm font-semibold">Call-Funnel</h2>
+          <h2 className="mb-4 text-sm font-semibold">Anrufe nach Ergebnis</h2>
+          {calls.length === 0 && <p className="text-sm text-muted">Im Zeitraum noch keine Anrufe protokolliert.</p>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {(Object.keys(CALL_KIND_LABEL) as CallKind[]).map((k) => {
-              const kindCalls = calls.filter((c) => c.call_kind === k);
-              const kindReached = kindCalls.filter((c) => c.outcome && REACHED_OUTCOMES.includes(c.outcome));
-              return (
+            {(Object.keys(CALL_OUTCOME_LABEL) as CallOutcome[])
+              .map((k) => ({ k, n: calls.filter((c) => c.outcome === k).length }))
+              .filter((x) => x.n > 0)
+              .map(({ k, n }) => (
                 <div key={k} className="rounded-lg bg-surface-2 p-3.5">
-                  <div className="text-xs text-muted">{CALL_KIND_LABEL[k]}</div>
-                  <div className="mt-1 text-2xl font-semibold tabular-nums">{kindCalls.length}</div>
-                  <div className="mt-1 text-xs text-muted">
-                    {kindCalls.length ? `${pct((kindReached.length / kindCalls.length) * 100)} erreicht` : '–'}
-                  </div>
+                  <div className="text-xs text-muted">{CALL_OUTCOME_LABEL[k]}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums">{n}</div>
+                  <div className="mt-1 text-xs text-muted">{pct((n / calls.length) * 100)} der Anrufe</div>
                 </div>
-              );
-            })}
+              ))}
           </div>
           <p className="mt-3 text-xs text-muted">
             Kontaktquote gesamt: {calls.length ? pct((reached.length / calls.length) * 100) : '–'} ·

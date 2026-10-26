@@ -4,6 +4,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
+import { seriesColor } from '@/lib/palette';
 import { eur, num } from '@/lib/format';
 
 const AXIS = { fontSize: 11, fill: 'var(--muted)' };
@@ -89,8 +90,6 @@ export function SourceChart({ data }: { data: { quelle: string; umsatz: number; 
   );
 }
 
-const PALETTE = ['#22c55e', '#6366f1', '#eab308', '#ef4444', '#0ea5e9', '#f97316', '#a855f7', '#14b8a6', '#64748b'];
-export const seriesColor = (i: number) => PALETTE[i % PALETTE.length];
 
 export function ShareDonut({ data }: { data: { name: string; value: number }[] }) {
   return (

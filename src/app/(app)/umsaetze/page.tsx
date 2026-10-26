@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { ctx } from '@/lib/ctx';
 
-import { ShareDonut, YearBars, seriesColor } from '@/components/Charts';
+import { ShareDonut, YearBars } from '@/components/Charts';
+import { seriesColor } from '@/lib/palette';
 import { eur, pct, dateOnly } from '@/lib/format';
 import type { Deal } from '@/lib/types';
 

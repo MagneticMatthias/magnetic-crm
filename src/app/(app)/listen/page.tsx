@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ctx } from '@/lib/ctx';
 import { PageHeader, Stat } from '@/components/ui';
+import { renameList } from '@/app/actions/listen';
 import { FunnelBars } from '@/components/Charts';
 import { num, pct } from '@/lib/format';
 import { REACHED_OUTCOMES } from '@/lib/labels';
@@ -97,6 +98,17 @@ export default async function ListenPage({
             </Link>
           ))}
         </div>
+
+        {aktiv && aktiv !== 'Ohne Liste' && (
+          <form action={renameList} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="alt" value={aktiv} />
+            <input type="hidden" name="p" value={pipeline.id} />
+            <label htmlFor="liste-neu" className="text-sm text-muted">Liste umbenennen:</label>
+            <input id="liste-neu" name="neu" defaultValue={aktiv} key={aktiv} className="input !w-auto min-w-[240px] !py-1.5" required />
+            <button className="btn-ghost">Umbenennen</button>
+            <span className="text-xs text-muted">Filter und Zuordnungen werden mit umbenannt.</span>
+          </form>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Stat label="Firmen" value={num(rows.length)} hint={`${num(unberuehrt)} noch unberührt`} />
