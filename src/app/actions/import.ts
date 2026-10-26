@@ -203,19 +203,25 @@ export async function importRows(input: {
     }
   }
 
-  // Filter fuer Signallisten einmalig anlegen
-  if (input.rows.some((r) => r.signalstaerke?.trim())) {
-    const { data: have } = await supabase.from('saved_filters').select('name').eq('org_id', orgId).eq('entity', 'deals');
-    const vorhanden = new Set((have ?? []).map((f) => f.name));
-    const neue = [
-      { name: 'Signal A (stark)', definition: { groups: [[{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }]] } },
-      { name: 'Signal A + B', definition: { groups: [
-        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }],
-        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'B' }],
+  // Gespeicherte Filter fuer die Liste einmalig anlegen (wie beim Skript-Import)
+  const liste = input.leadSource;
+  const quelle = { field: 'source', operator: 'eq', value: liste };
+  const mitSignal = input.rows.some((r) => r.signalstaerke?.trim());
+  const filter = [
+    { entity: 'contacts', name: liste, definition: { groups: [[{ field: 'lead_source', operator: 'eq', value: liste }]] } },
+    { entity: 'deals', name: liste, definition: { groups: [[quelle]] } },
+    { entity: 'deals', name: `${liste} · noch nicht angerufen`, definition: { groups: [[quelle, { field: 'last_contacted_at', operator: 'is_empty', value: '' }]] } },
+    ...(mitSignal ? [
+      { entity: 'deals', name: `${liste} · Signal A`, definition: { groups: [[quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'A' }]] } },
+      { entity: 'deals', name: `${liste} · Signal A + B`, definition: { groups: [
+        [quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'A' }],
+        [quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'B' }],
       ] } },
-    ].filter((f) => !vorhanden.has(f.name));
-    if (neue.length) await supabase.from('saved_filters').insert(neue.map((f) => ({ org_id: orgId, user_id: profile.id, entity: 'deals', ...f })));
-  }
+    ] : []),
+  ];
+  const { data: have } = await supabase.from('saved_filters').select('name, entity').eq('org_id', orgId);
+  const neue = filter.filter((f) => !(have ?? []).some((h) => h.name === f.name && h.entity === f.entity));
+  if (neue.length) await supabase.from('saved_filters').insert(neue.map((f) => ({ org_id: orgId, user_id: profile.id, ...f })));
 
   revalidatePath('/kontakte');
   revalidatePath('/pipelines');
