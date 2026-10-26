@@ -102,6 +102,10 @@ export const CONTACT_FIELDS: FieldDef[] = [
     get: (r: ContactWithPersons) => r.custom?.region ?? null },
   { key: 'custom.konzern', label: 'Konzern', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
     get: (r: ContactWithPersons) => r.custom?.konzern ?? null },
+  { key: 'custom.signalstaerke', label: 'Signalstärke (A = stark)', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['A', 'B', 'C'], get: (r: ContactWithPersons) => r.custom?.signalstaerke ?? null },
+  { key: 'custom.signal', label: 'Signal-Hinweis', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: ContactWithPersons) => r.custom?.signal ?? null },
 ];
 
 export const DEAL_FIELDS: FieldDef[] = [
@@ -158,6 +162,10 @@ export const DEAL_FIELDS: FieldDef[] = [
     get: (r: DealWithContact) => r.contact?.custom?.region ?? null },
   { key: 'custom.konzern', label: 'Konzern', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
     get: (r: DealWithContact) => r.contact?.custom?.konzern ?? null },
+  { key: 'custom.signalstaerke', label: 'Signalstärke (A = stark)', type: 'select', group: 'Messe / Zusatzfelder', icon: 'list',
+    options: ['A', 'B', 'C'], get: (r: DealWithContact) => r.contact?.custom?.signalstaerke ?? null },
+  { key: 'custom.signal', label: 'Signal-Hinweis', type: 'text', group: 'Messe / Zusatzfelder', icon: 'text',
+    get: (r: DealWithContact) => r.contact?.custom?.signal ?? null },
 ];
 
 const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();

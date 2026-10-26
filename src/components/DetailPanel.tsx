@@ -37,6 +37,7 @@ const CUSTOM_LABEL: Record<string, string> = {
   hauptaussteller: 'Hauptaussteller', budgetklasse: 'Budgetklasse', geschaeftsfuehrung: 'Geschäftsführung',
   groesse: 'Firmengröße', groesse_gesichert: 'Größe gesichert', mitarbeiter: 'Mitarbeiter ca.', konzern: 'Konzern', region: 'Region',
   fundstelle: 'Fundstelle', messe: 'Messe',
+  signalstaerke: 'Signalstärke', signal: 'Signal', signal_quelle: 'Signal-Quelle', land: 'Land',
 };
 
 /* ------------------------- kleine Bausteine ------------------------- */
@@ -571,7 +572,11 @@ export default function DetailPanel({
                         {Object.entries(contact.custom).filter(([, v]) => v).map(([k, v]) => (
                           <div key={k} className="min-w-0">
                             <dt className="text-xs text-muted">{CUSTOM_LABEL[k] ?? k}</dt>
-                            <dd className="break-words">{v}</dd>
+                            <dd className="break-words">
+                              {typeof v === 'string' && /^https?:\/\//.test(v)
+                                ? <a href={v} target="_blank" rel="noreferrer" className="text-brand hover:underline">Quelle öffnen</a>
+                                : v}
+                            </dd>
                           </div>
                         ))}
                       </dl>

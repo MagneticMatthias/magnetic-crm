@@ -367,6 +367,8 @@ export const CONTACT_COLUMNS: ColumnDef<ContactWithPersons>[] = [
   { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.custom?.konzern}</Muted>, sortValue: (r) => r.custom?.konzern ?? '' },
   { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.custom?.region}</Muted>, sortValue: (r) => r.custom?.region ?? '' },
   { key: 'custom.messe', label: 'Liste / Messe', width: 150, render: (r) => <Muted>{r.custom?.messe}</Muted>, sortValue: (r) => r.custom?.messe ?? '' },
+  { key: 'custom.signalstaerke', label: 'Signal', width: 80, render: (r) => <Muted>{r.custom?.signalstaerke}</Muted>, sortValue: (r) => r.custom?.signalstaerke ?? 'Z' },
+  { key: 'custom.signal', label: 'Signal-Hinweis', width: 320, render: (r) => <Muted>{r.custom?.signal}</Muted>, sortValue: (r) => r.custom?.signal ?? '' },
 ];
 
 export const CONTACT_DEFAULT_COLUMNS = [
@@ -403,6 +405,8 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'custom.konzern', label: 'Konzern', width: 220, render: (r) => <Muted>{r.contact?.custom?.konzern}</Muted>, sortValue: (r) => r.contact?.custom?.konzern ?? '' },
   { key: 'custom.region', label: 'Region', width: 140, render: (r) => <Muted>{r.contact?.custom?.region}</Muted>, sortValue: (r) => r.contact?.custom?.region ?? '' },
   { key: 'custom.messe', label: 'Liste / Messe', width: 150, render: (r) => <Muted>{r.contact?.custom?.messe}</Muted>, sortValue: (r) => r.contact?.custom?.messe ?? '' },
+  { key: 'custom.signalstaerke', label: 'Signal', width: 80, render: (r) => <Muted>{r.contact?.custom?.signalstaerke}</Muted>, sortValue: (r) => r.contact?.custom?.signalstaerke ?? 'Z' },
+  { key: 'custom.signal', label: 'Signal-Hinweis', width: 320, render: (r) => <Muted>{r.contact?.custom?.signal}</Muted>, sortValue: (r) => r.contact?.custom?.signal ?? '' },
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [

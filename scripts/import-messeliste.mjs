@@ -35,6 +35,8 @@ const companyName = (s) => {
   let v = clean(s);
   if (!v) return null;
   v = v.split(/\r?\n/)[0].trim();
+  // "Beck GmbH & Co. … KG / Beck Elektronik Display GmbH": erste Firma nehmen
+  if (v.length > 40 && v.includes(' / ')) v = v.split(' / ')[0].trim();
   if (v.length > 60) {
     const cut = v.search(/[.;:–]\s|\s\d{4,5}\s/);
     if (cut > 3) v = v.slice(0, cut).trim();
@@ -64,19 +66,58 @@ const HEADER_MAP = {
   'quelle liste': 'fundstelle', 'fundstelle': 'fundstelle',
   'standtyp': 'standtyp', 'hauptaussteller': 'hauptaussteller', 'budgetklasse': 'budgetklasse',
   'geschaeftsfuehrung': 'geschaeftsfuehrung',
+  // Signalliste (electronica 2026): Hinweis, dass die Firma auf der Messe sichtbar auftritt
+  'nr': 'nr', 'stadt': 'ort', 'produkt': 'beschreibung', 'produkte': 'beschreibung',
+  'halle_stand': 'halle_stand', 'land': 'land',
+  'signal': 'signal', 'signalstaerke': 'signalstaerke', 'quelle': 'signal_quelle',
 };
+
+// "Gilching (Bayern)" -> Ort Gilching, Region Bayern.
+// "Leonberg (BW - Tochter frz. Axon' Cable)" -> Region Baden-Württemberg, Konzern-Hinweis.
+const REGIONEN = {
+  bayern: 'Bayern', oberbayern: 'Bayern', muenchen: 'Bayern', 'münchen': 'Bayern', bw: 'Baden-Württemberg', 'baden-wuerttemberg': 'Baden-Württemberg',
+  nrw: 'Nordrhein-Westfalen', hessen: 'Hessen', sachsen: 'Sachsen', sh: 'Schleswig-Holstein',
+  rlp: 'Rheinland-Pfalz', niedersachsen: 'Niedersachsen', hamburg: 'Hamburg', bremen: 'Bremen', berlin: 'Berlin',
+  thueringen: 'Thüringen', brandenburg: 'Brandenburg', saarland: 'Saarland',
+};
+function ortUndRegion(raw) {
+  const t = clean(raw);
+  if (!t) return { ort: null, region: null, konzern: null };
+  const m = t.match(/^([^(]*?)\s*\(([^)]*)\)\s*$/);
+  const ort = (m ? m[1] : t).trim() || null;
+  let region = REGIONEN[norm(ort)] ?? null;
+  const hinweise = [];
+  for (const teil of (m ? m[2] : '').split(/\s+-\s+/)) {
+    const k = norm(teil);
+    if (!k) continue;
+    if (REGIONEN[k]) region = REGIONEN[k]; else hinweise.push(teil.trim());
+  }
+  return { ort: region && norm(ort) === 'oberbayern' ? null : ort, region, konzern: hinweise.join(', ') || null };
+}
+const LAENDER = { de: 'Deutschland', at: 'Österreich', ch: 'Schweiz' };
+// Signalstaerke A/B/C ergibt die Prio, wenn die Liste keine eigene Prio-Spalte hat
+const PRIO_AUS_SIGNAL = { a: '1', b: '2', c: '3' };
+// Firmen-Schluessel ohne Rechtsform, damit "Bott Systems GmbH" und "Bott Systems" zusammenfinden
+const firmKey = (s) => norm(s)
+  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+  .replace(/\(.*?\)/g, ' ')
+  .replace(/\b(gmbh|mbh|ag|se|kg|co|ohg|ug|e\.?k|haftungsbeschraenkt|group|gruppe|deutschland|germany)\b/g, ' ')
+  .replace(/[^a-z0-9]+/g, '');
 const normHeader = (h) => String(h ?? '').replace(/^\uFEFF/, '').trim().toLowerCase()
   .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
 
 function parseCsv(text) {
+  // Trennzeichen aus der Kopfzeile: Semikolon (deutsches Excel/Numbers) oder Komma
+  const kopf = text.slice(0, text.indexOf('\n') >>> 0);
+  const sep = (kopf.match(/;/g) ?? []).length >= (kopf.match(/,/g) ?? []).length ? ';' : ',';
   const rows = []; let row = [], f = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (q) {
       if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
       else f += c;
-    } else if (c === '"') q = true;
-    else if (c === ',' || c === ';') { row.push(f); f = ''; }
+    } else if (c === '"' && f === '') q = true; // nur am Feldanfang, sonst ist es ein Zoll-Zeichen
+    else if (c === sep) { row.push(f); f = ''; }
     else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
     else if (c !== '\r') f += c;
   }
@@ -164,15 +205,42 @@ async function main() {
     }
   }
 
-  const existing = await must(sb.from('contacts').select('id, company').eq('org_id', org.id), 'contacts');
+  const existing = await must(sb.from('contacts').select('id, company, custom').eq('org_id', org.id), 'contacts');
   const byCompany = new Map(existing.map((c) => [norm(c.company), c.id]));
-  const stats = { contacts: 0, persons: 0, deals: 0, linkedin: 0, notes: 0, skipped: 0, repaired: 0 };
+  const byKey = new Map(existing.map((c) => [firmKey(c.company), c]));
+  const stats = { contacts: 0, persons: 0, deals: 0, linkedin: 0, notes: 0, skipped: 0, repaired: 0, enriched: 0 };
+  const angereichert = [];
 
   for (const r of rows) {
     const company = companyName(r.firma);
     if (!company) continue;
     // Bereits importiert (auch mit dem alten, überlangen Namen): Name reparieren, sonst überspringen.
     const rawKey = norm(clean(r.firma));
+    const ortInfo = ortUndRegion(r.ort);
+    const signalstaerke = clean(r.signalstaerke)?.toUpperCase() ?? null;
+
+    // Vorhandene Firma aus einer anderen Liste: Signal dazuschreiben, nichts doppelt anlegen
+    const vorhanden = byKey.get(firmKey(company));
+    if (clean(r.signal) && vorhanden) {
+      const alt = vorhanden.custom ?? {};
+      const neu = {
+        ...alt,
+        signal: clean(r.signal), signalstaerke, signal_quelle: clean(r.signal_quelle),
+        halle_stand: alt.halle_stand || clean(r.halle_stand),
+        region: alt.region || ortInfo.region,
+      };
+      if (alt.signal !== neu.signal || alt.signalstaerke !== neu.signalstaerke) {
+        stats.enriched++;
+        angereichert.push(`${vorhanden.company} (${signalstaerke ?? '-'})`);
+        if (!DRY) {
+          await must(sb.from('contacts').update({ custom: neu }).eq('id', vorhanden.id), 'contact enrich');
+          await must(sb.from('notes').insert({ org_id: org.id, contact_id: vorhanden.id, user_id: userId,
+            body: `Signal ${signalstaerke ?? ''} (${listName}): ${clean(r.signal)}${clean(r.signal_quelle) ? `\nQuelle: ${clean(r.signal_quelle)}` : ''}` }), 'note enrich');
+        }
+      } else stats.skipped++;
+      continue;
+    }
+
     if (byCompany.has(norm(company)) || byCompany.has(rawKey)) {
       const oldId = byCompany.get(rawKey);
       if (oldId && rawKey !== norm(company)) {
@@ -187,20 +255,23 @@ async function main() {
 
     const contactId = crypto.randomUUID();
     const custom = {
-      messe: listName, prio: clean(r.prio), kanal: clean(r.kanal), standtyp: clean(r.standtyp),
+      messe: listName, prio: clean(r.prio) ?? PRIO_AUS_SIGNAL[norm(signalstaerke)] ?? null, kanal: clean(r.kanal), standtyp: clean(r.standtyp),
       halle_stand: clean(r.halle_stand), hauptaussteller: clean(r.hauptaussteller),
       budgetklasse: clean(r.budgetklasse), geschaeftsfuehrung: clean(r.geschaeftsfuehrung), fundstelle: clean(r.fundstelle),
       // Firmengroesse & Co. (electronica-Liste): klein / mittel / gross
       groesse: clean(r.groesse), groesse_gesichert: clean(r.groesse_gesichert),
-      mitarbeiter: clean(r.mitarbeiter), konzern: clean(r.konzern), region: clean(r.region),
+      mitarbeiter: clean(r.mitarbeiter), konzern: clean(r.konzern) ?? ortInfo.konzern, region: clean(r.region) ?? ortInfo.region,
+      signal: clean(r.signal), signalstaerke, signal_quelle: clean(r.signal_quelle),
     };
+    for (const k of Object.keys(custom)) if (custom[k] == null) delete custom[k];
     stats.contacts++;
     if (!DRY) await must(sb.from('contacts').insert({
       id: contactId, org_id: org.id, company, website: cleanUrl(r.website || r.website2),
-      city: clean(r.ort), postal_code: clean(r.plz), country: 'Deutschland', lead_source: listName,
+      city: ortInfo.ort, postal_code: clean(r.plz), country: LAENDER[norm(r.land)] ?? 'Deutschland', lead_source: listName,
       notes: clean(r.beschreibung), owner_id: userId, created_by: userId, custom,
     }), 'contact');
     byCompany.set(norm(company), contactId);
+    byKey.set(firmKey(company), { id: contactId, company, custom });
 
     // Ansprechpartner + Zentrale
     const persons = [];
@@ -230,6 +301,11 @@ async function main() {
         subject: 'Auf LinkedIn angeschrieben', body: clean(r.ap_hinweis) && norm(r.ap_hinweis) !== 'auf linkedin angeschrieben' ? clean(r.ap_hinweis) : null,
       }), 'activity');
     }
+    if (clean(r.signal)) {
+      stats.notes++;
+      if (!DRY) await must(sb.from('notes').insert({ org_id: org.id, contact_id: contactId, deal_id: dealId, user_id: userId,
+        body: `Signal ${signalstaerke ?? ''} (${listName}): ${clean(r.signal)}${clean(r.signal_quelle) ? `\nQuelle: ${clean(r.signal_quelle)}` : ''}` }), 'note signal');
+    }
     if (clean(r.notiz)) {
       stats.notes++;
       if (!DRY) await must(sb.from('notes').insert({ org_id: org.id, contact_id: contactId, deal_id: dealId, user_id: userId, body: clean(r.notiz) }), 'note');
@@ -242,6 +318,14 @@ async function main() {
     { entity: 'deals', name: listName, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }]] } },
     { entity: 'deals', name: `${listName} · Prio 1`, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }, { field: 'custom.prio', operator: 'eq', value: '1' }]] } },
     { entity: 'deals', name: `${listName} · noch nicht angerufen`, definition: { groups: [[{ field: 'source', operator: 'eq', value: listName }, { field: 'last_contacted_at', operator: 'is_empty', value: '' }]] } },
+    ...(rows.some((r) => clean(r.signalstaerke)) ? [
+      // Ueber alle Listen hinweg: auch Firmen, die schon aus einer frueheren Liste im CRM waren
+      { entity: 'deals', name: 'Signal A (stark)', definition: { groups: [[{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }]] } },
+      { entity: 'deals', name: 'Signal A + B', definition: { groups: [
+        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }],
+        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'B' }],
+      ] } },
+    ] : []),
     ...(rows.some((r) => clean(r.groesse)) ? [
       { entity: 'deals', name: `${listName} · Mittelstand`, definition: { groups: [
         [{ field: 'source', operator: 'eq', value: listName }, { field: 'custom.groesse', operator: 'eq', value: 'klein' }],
@@ -259,6 +343,7 @@ async function main() {
 
   console.log(`\n✅ ${DRY ? 'Würde anlegen' : 'Angelegt'}: ${stats.contacts} Kontakte, ${stats.persons} Personen, ${stats.deals} Deals,`);
   console.log(`   ${stats.linkedin} davon LinkedIn angeschrieben, ${stats.notes} Notizen · ${stats.skipped} bereits vorhandene Firmen übersprungen`);
+  if (stats.enriched) console.log(`   ${stats.enriched} vorhandene Firmen um das Signal ergänzt: ${angereichert.join(', ')}`);
   console.log(`   Filter: ${filters.map((f) => `"${f.name}"`).join(', ')}`);
 }
 main().catch((e) => { console.error('❌', e.message); process.exit(1); });
