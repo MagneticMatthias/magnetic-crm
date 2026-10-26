@@ -3,18 +3,18 @@
 import sharp from 'sharp';
 import { writeFileSync } from 'node:fs';
 
-const BLAU = '#2f6df6';
+const MAGENTA = '#e5006d';
 // Trichter aus zwei Teilen: oberer Rand und Trichterkoerper, dazwischen ein Spalt.
 const TRICHTER = 'M110 140H402L367.3 181H144.7Z M156.5 195H355.5L292 270V372L220 404V270Z';
 
-// App-Icon: weisser Trichter auf blauer Kachel
+// App-Icon: weisser Trichter auf Magenta-Kachel
 const kachel = (rx, scale = 1) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="${rx}" fill="${BLAU}"/>
+  <rect width="512" height="512" rx="${rx}" fill="${MAGENTA}"/>
   <g transform="translate(256 272) scale(${scale}) translate(-256 -272)"><path d="${TRICHTER}" fill="#fff"/></g>
 </svg>`;
-// Favicon: blauer Trichter auf transparentem Grund, formatfuellend
+// Favicon: Magenta-Trichter auf transparentem Grund, formatfuellend
 const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 116 312 312">
-  <path d="${TRICHTER}" fill="${BLAU}"/>
+  <path d="${TRICHTER}" fill="${MAGENTA}"/>
 </svg>`;
 
 const png = (svg, size) => sharp(Buffer.from(svg), { density: 300 }).resize(size, size).png().toBuffer();

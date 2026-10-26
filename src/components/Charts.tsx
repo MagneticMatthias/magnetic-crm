@@ -72,7 +72,7 @@ export function FunnelBars({
 }
 
 export function SourceChart({ data }: { data: { quelle: string; umsatz: number; deals: number }[] }) {
-  const palette = ['#2f6df6', '#6366f1', '#8b5cf6', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444'];
+  const palette = ['#e5006d', '#6366f1', '#8b5cf6', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444'];
   return (
     <ResponsiveContainer width="100%" height={Math.max(180, data.length * 34)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
