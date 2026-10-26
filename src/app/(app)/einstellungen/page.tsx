@@ -10,6 +10,7 @@ import { saveEmailSettings, createEmailTemplate, deleteEmailTemplate } from '@/a
 import { smtpConfigured } from '@/lib/mailer';
 import { mailSyncConfigured, mailAccountNames } from '@/lib/mailsync';
 import MailSyncCard from '@/components/MailSyncCard';
+import { anrufmonitorStatus } from '@/lib/fritz';
 import { PIPELINE_KIND_LABEL, ROLE_LABEL } from '@/lib/labels';
 import { canManage } from '@/lib/auth';
 import type { EmailTemplate, Pipeline, PipelineKind, Profile, Stage, UserRole } from '@/lib/types';
@@ -225,6 +226,29 @@ export default async function SettingsPage() {
           </div>
         </section>
 
+        {(() => {
+          const f = anrufmonitorStatus();
+          return (
+            <section className="card p-5">
+              <h2 className="mb-1 text-sm font-semibold">Fritzbox-Anrufmonitor</h2>
+              <p className="mb-3 text-xs text-muted">
+                Telefonate über die Fritzbox landen automatisch im Verlauf, mit Dauer. Gespeichert wird nur, was zu einer
+                Telefonnummer eines Ansprechpartners passt. Private Anrufe werden verworfen.
+              </p>
+              {!f.aktiv && <p className="text-sm text-muted">Ausgeschaltet (FRITZBOX_ANRUFMONITOR=0).</p>}
+              {f.aktiv && f.verbunden && <p className="text-sm text-win">Verbunden mit der Fritzbox ({f.host}).</p>}
+              {f.aktiv && !f.verbunden && (
+                <div className="space-y-1 text-sm">
+                  <p className="text-warn">Keine Verbindung zur Fritzbox ({f.host}){f.fehler ? `: ${f.fehler}` : ''}.</p>
+                  <p className="text-xs text-muted">
+                    Einmalig einschalten: an einem Telefon der Fritzbox <b>#96*5*</b> wählen. Andere Adresse der Fritzbox:
+                    FRITZBOX_HOST in der Server-Umgebung setzen.
+                  </p>
+                </div>
+              )}
+            </section>
+          );
+        })()}
         <MailSyncCard
           configured={mailSyncConfigured()}
           users={mailAccountNames()}

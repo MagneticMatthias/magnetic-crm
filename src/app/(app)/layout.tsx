@@ -6,6 +6,8 @@ import { signOut } from '@/app/actions/auth';
 import GlobalSearch from '@/components/GlobalSearch';
 import RealtimeSync from '@/components/RealtimeSync';
 import MailSyncPing from '@/components/MailSyncPing';
+import AnrufPing from '@/components/AnrufPing';
+import { anrufmonitorAktiv } from '@/lib/fritz';
 import { mailSyncConfigured } from '@/lib/mailsync';
 import type { Pipeline } from '@/lib/types';
 
@@ -30,6 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="ml-auto flex items-center gap-3">
             <RealtimeSync userId={profile.id} name={profile.full_name || profile.email || 'Kollege'} />
             <MailSyncPing enabled={mailSyncConfigured()} />
+            {anrufmonitorAktiv() && <AnrufPing />}
             <UserMenu
               name={profile.full_name || profile.email || 'Nutzer'}
               role={profile.role}

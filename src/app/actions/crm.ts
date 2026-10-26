@@ -280,6 +280,9 @@ export async function updateActivity(formData: FormData) {
       await supabase.from('deals')
         .update({ stage_id: nextStage, pipeline_id: stage.pipeline_id }).eq('id', a.deal_id);
     }
+  } else if (a?.deal_id && type === 'call') {
+    // Ergebnis nachgetragen (z. B. bei einem Anruf aus der Fritzbox): Phase zieht mit
+    await phaseNachziehen(supabase, a.deal_id, phaseAusAktivitaet(formData, type));
   }
 
   refreshAll();

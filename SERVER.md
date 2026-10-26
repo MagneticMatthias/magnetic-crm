@@ -224,3 +224,19 @@ Laeuft, solange das CRM in einem Browser offen ist (alle 5 Minuten),
 oder per Knopf unter Einstellungen -> Postfach-Abgleich.
 
 Einmalig `supabase/09_mail_sync.sql` im SQL-Editor ausfuehren.
+
+## Fritzbox-Anrufmonitor
+
+Telefonate über die Fritzbox landen automatisch als Anruf im Verlauf, mit
+Dauer. Gespeichert wird nur, was zu einer Telefonnummer eines
+Ansprechpartners passt; private Anrufe werden verworfen.
+
+1. Einmalig an einem Telefon der Fritzbox `#96*5*` wählen. Das schaltet den
+   Anrufmonitor (Port 1012) ein. `#96*4*` schaltet ihn wieder aus.
+2. Das CRM verbindet sich von selbst mit `192.168.178.1`. Andere Adresse:
+   `FRITZBOX_HOST=…` in `crm-umgebung.txt`. Abschalten: `FRITZBOX_ANRUFMONITOR=0`.
+3. Status steht unter Einstellungen → Fritzbox-Anrufmonitor.
+
+Die Anrufe werden abgeholt, solange das CRM in einem Browser offen ist.
+Nicht abgenommene ausgehende Anrufe bekommen das Ergebnis „Nicht erreicht“,
+bei Gesprächen trägst du das Ergebnis über den Hinweis unten rechts nach.

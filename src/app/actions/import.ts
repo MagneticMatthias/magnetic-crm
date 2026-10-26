@@ -130,7 +130,7 @@ export async function importRows(input: {
           customOf.set(dupId, neu);
           // Deals der Firma in die neue Liste holen (in der gewaehlten Pipeline, sonst alle offenen)
           let q = supabase.from('deals').select('id, custom').eq('contact_id', dupId);
-          q = pipelineId ? q.eq('pipeline_id', pipelineId) : q.eq('status', 'open');
+          q = pipelineId ? q.eq('pipeline_id', pipelineId) : q.eq('status', 'offen');
           const { data: deals } = await q;
           const dealCustom = { ...(custom.prio ? { prio: custom.prio } : {}), ...(custom.kanal ? { kanal: custom.kanal } : {}) };
           for (const d of deals ?? []) {
