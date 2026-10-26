@@ -11,6 +11,7 @@ export type ImportResult = {
   created: number;
   skipped: number;
   merged: number;
+  moved: number;
   enriched: string[];
   errors: string[];
 };
@@ -29,15 +30,18 @@ const normDomain = (s?: string | null) =>
  *  - "skip": Zeile ueberspringen
  *  - "merge": bestehende Firma ergaenzen (neue Person, leere Zusatzfelder,
  *    Signal mit Notiz), keinen neuen Deal
+ *  - "replace": bestehende Firma wandert in diese Liste. Die Daten der Datei
+ *    gewinnen, Deal und Leadherkunft bekommen den neuen Listennamen. Anrufe,
+ *    Notizen und Aufgaben bleiben erhalten (deshalb kein Loeschen).
  */
 export async function importRows(input: {
   rows: ImportRow[];
   leadSource: string;
   stageId: string | null;
-  duplicates: 'skip' | 'merge';
+  duplicates: 'skip' | 'merge' | 'replace';
 }): Promise<ImportResult> {
   const { supabase, orgId, profile } = await ctx();
-  const result: ImportResult = { created: 0, skipped: 0, merged: 0, enriched: [], errors: [] };
+  const result: ImportResult = { created: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
 
   let pipelineId: string | null = null;
   if (input.stageId) {
@@ -111,11 +115,35 @@ export async function importRows(input: {
         // Zusatzfelder: leere Felder fuellen, Signal immer aktualisieren
         const alt = customOf.get(dupId) ?? {};
         const neu: Record<string, string | null> = { ...alt };
+        const ersetzen = input.duplicates === 'replace';
         for (const [k, v] of Object.entries(custom)) {
-          if (k === 'messe') continue; // die Firma bleibt in ihrer urspruenglichen Liste
-          if (k.startsWith('signal') || !neu[k]) neu[k] = v;
+          if (k === 'messe' && !ersetzen) continue; // beim Ergaenzen bleibt die Firma in ihrer Liste
+          if (ersetzen || k.startsWith('signal') || !neu[k]) neu[k] = v;
         }
-        if (JSON.stringify(neu) !== JSON.stringify(alt)) {
+        if (ersetzen) {
+          await supabase.from('contacts').update({
+            custom: neu, lead_source: input.leadSource,
+            ...(ortInfo.ort ? { city: ortInfo.ort } : {}),
+            ...(landName(row.country) ? { country: landName(row.country) } : {}),
+            ...(website ? { website } : {}),
+          }).eq('id', dupId);
+          customOf.set(dupId, neu);
+          // Deals der Firma in die neue Liste holen (in der gewaehlten Pipeline, sonst alle offenen)
+          let q = supabase.from('deals').select('id, custom').eq('contact_id', dupId);
+          q = pipelineId ? q.eq('pipeline_id', pipelineId) : q.eq('status', 'open');
+          const { data: deals } = await q;
+          const dealCustom = { ...(custom.prio ? { prio: custom.prio } : {}), ...(custom.kanal ? { kanal: custom.kanal } : {}) };
+          for (const d of deals ?? []) {
+            await supabase.from('deals').update({ source: input.leadSource, custom: { ...(d.custom ?? {}), ...dealCustom } }).eq('id', d.id);
+          }
+          if (!deals?.length && input.stageId && pipelineId) {
+            await supabase.from('deals').insert({
+              org_id: orgId, contact_id: dupId, pipeline_id: pipelineId, stage_id: input.stageId,
+              title: company ?? label ?? 'Import', source: input.leadSource, owner_id: profile.id, setter_id: profile.id, custom: dealCustom,
+            });
+          }
+          result.moved++;
+        } else if (JSON.stringify(neu) !== JSON.stringify(alt)) {
           await supabase.from('contacts').update({ custom: neu }).eq('id', dupId);
           customOf.set(dupId, neu);
         }
@@ -124,7 +152,7 @@ export async function importRows(input: {
             body: signalNotiz(signalstaerke, signal, custom.signal_quelle ?? null, input.leadSource) });
           result.enriched.push(`${company ?? label} (${signalstaerke ?? '–'})`);
         }
-        result.merged++;
+        if (!ersetzen) result.merged++;
         continue;
       }
 

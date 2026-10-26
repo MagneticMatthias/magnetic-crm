@@ -16,7 +16,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
   const [mapping, setMapping] = useState<Record<number, ImportFieldKey | ''>>({});
   const [leadSource, setLeadSource] = useState('');
   const [stageId, setStageId] = useState(stageOptions[0]?.id ?? '');
-  const [duplicates, setDuplicates] = useState<'skip' | 'merge'>('merge');
+  const [duplicates, setDuplicates] = useState<'skip' | 'merge' | 'replace'>('replace');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -49,7 +49,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
     if (!parsed) return;
     setBusy(true);
     setResult(null);
-    const total: ImportResult = { created: 0, skipped: 0, merged: 0, enriched: [], errors: [] };
+    const total: ImportResult = { created: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
     const chunk = 50;
     for (let i = 0; i < rows.length; i += chunk) {
       const part = await importRows({
@@ -57,7 +57,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
         stageId: stageId || null, duplicates,
       });
       total.created += part.created; total.skipped += part.skipped;
-      total.merged += part.merged; total.enriched.push(...part.enriched); total.errors.push(...part.errors);
+      total.merged += part.merged; total.moved += part.moved; total.enriched.push(...part.enriched); total.errors.push(...part.errors);
       setProgress(Math.min(100, Math.round(((i + chunk) / rows.length) * 100)));
     }
     setResult(total);
@@ -139,14 +139,17 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
               <div>
                 <label className="label" htmlFor="imp-dup">Bei Dubletten</label>
                 <select id="imp-dup" className="input" value={duplicates}
-                        onChange={(e) => setDuplicates(e.target.value as 'skip' | 'merge')}>
-                  <option value="merge">Bestehende Firma ergänzen</option>
+                        onChange={(e) => setDuplicates(e.target.value as 'skip' | 'merge' | 'replace')}>
+                  <option value="replace">In diese Liste übernehmen (alter Eintrag wird ersetzt)</option>
+                  <option value="merge">Bestehende Firma nur ergänzen</option>
                   <option value="skip">Zeile überspringen</option>
                 </select>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Dubletten erkennt der Import an E-Mail, Website oder Firmenname, auch ohne „GmbH“. Eine vorhandene Firma bekommt keinen zweiten Deal. Beim Ergänzen kommen neue Personen, leere Zusatzfelder und das Signal mit Notiz dazu.
+              Dubletten erkennt der Import an E-Mail, Website oder Firmenname, auch ohne „GmbH“. Eine vorhandene Firma bekommt nie einen zweiten Deal.
+              {duplicates === 'replace' && ' Beim Übernehmen wandert die Firma samt Deal in diese Liste und bekommt die Daten aus der Datei. Anrufe, Notizen und Aufgaben bleiben erhalten.'}
+              {duplicates === 'merge' && ' Beim Ergänzen bleibt die Firma in ihrer alten Liste. Neue Personen, leere Zusatzfelder und das Signal kommen dazu.'}
             </p>
           </section>
 
@@ -169,7 +172,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
             {result && (
               <div className="mt-4 rounded-lg bg-win/10 p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-win"><Check size={16} /> Import abgeschlossen</p>
-                <p className="mt-1">{result.created} neu angelegt · {result.merged} zusammengeführt · {result.skipped} übersprungen</p>
+                <p className="mt-1">{result.created} neu angelegt · {result.moved} in diese Liste übernommen · {result.merged} ergänzt · {result.skipped} übersprungen</p>
                 {result.enriched.length > 0 && (
                   <p className="mt-1 text-muted">Signal ergänzt bei: {result.enriched.join(', ')}</p>
                 )}
