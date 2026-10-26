@@ -37,7 +37,7 @@ const CUSTOM_LABEL: Record<string, string> = {
   hauptaussteller: 'Hauptaussteller', budgetklasse: 'Budgetklasse', geschaeftsfuehrung: 'Geschäftsführung',
   groesse: 'Firmengröße', groesse_gesichert: 'Größe gesichert', mitarbeiter: 'Mitarbeiter ca.', konzern: 'Konzern', region: 'Region',
   fundstelle: 'Fundstelle', messe: 'Messe',
-  signalstaerke: 'Signalstärke', signal: 'Signal', signal_quelle: 'Signal-Quelle', land: 'Land',
+  signalstaerke: 'Signalstärke', signal: 'Signal', signal_quelle: 'Signal-Quelle', land: 'Land', produkt: 'Produkt',
 };
 
 /* ------------------------- kleine Bausteine ------------------------- */

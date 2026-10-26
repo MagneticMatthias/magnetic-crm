@@ -16,7 +16,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
   const [mapping, setMapping] = useState<Record<number, ImportFieldKey | ''>>({});
   const [leadSource, setLeadSource] = useState('');
   const [stageId, setStageId] = useState(stageOptions[0]?.id ?? '');
-  const [duplicates, setDuplicates] = useState<'skip' | 'merge'>('skip');
+  const [duplicates, setDuplicates] = useState<'skip' | 'merge'>('merge');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -49,7 +49,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
     if (!parsed) return;
     setBusy(true);
     setResult(null);
-    const total: ImportResult = { created: 0, skipped: 0, merged: 0, errors: [] };
+    const total: ImportResult = { created: 0, skipped: 0, merged: 0, enriched: [], errors: [] };
     const chunk = 50;
     for (let i = 0; i < rows.length; i += chunk) {
       const part = await importRows({
@@ -57,7 +57,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
         stageId: stageId || null, duplicates,
       });
       total.created += part.created; total.skipped += part.skipped;
-      total.merged += part.merged; total.errors.push(...part.errors);
+      total.merged += part.merged; total.enriched.push(...part.enriched); total.errors.push(...part.errors);
       setProgress(Math.min(100, Math.round(((i + chunk) / rows.length) * 100)));
     }
     setResult(total);
@@ -140,13 +140,13 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
                 <label className="label" htmlFor="imp-dup">Bei Dubletten</label>
                 <select id="imp-dup" className="input" value={duplicates}
                         onChange={(e) => setDuplicates(e.target.value as 'skip' | 'merge')}>
+                  <option value="merge">Bestehende Firma ergänzen</option>
                   <option value="skip">Zeile überspringen</option>
-                  <option value="merge">Person an bestehenden Kontakt hängen</option>
                 </select>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Dubletten werden über E-Mail, Website-Domain oder Firmenname erkannt – ein Bestandskunde taucht so nicht als Kaltakquise-Lead wieder auf.
+              Dubletten erkennt der Import an E-Mail, Website oder Firmenname, auch ohne „GmbH“. Eine vorhandene Firma bekommt keinen zweiten Deal. Beim Ergänzen kommen neue Personen, leere Zusatzfelder und das Signal mit Notiz dazu.
             </p>
           </section>
 
@@ -170,6 +170,9 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
               <div className="mt-4 rounded-lg bg-win/10 p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-win"><Check size={16} /> Import abgeschlossen</p>
                 <p className="mt-1">{result.created} neu angelegt · {result.merged} zusammengeführt · {result.skipped} übersprungen</p>
+                {result.enriched.length > 0 && (
+                  <p className="mt-1 text-muted">Signal ergänzt bei: {result.enriched.join(', ')}</p>
+                )}
                 {result.errors.length > 0 && (
                   <ul className="mt-2 list-disc pl-5 text-lose">
                     {result.errors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}

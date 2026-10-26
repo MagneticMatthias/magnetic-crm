@@ -33,7 +33,7 @@ export function parseCsv(text: string, delimiter?: string): ParsedCsv {
       } else field += c;
       continue;
     }
-    if (c === '"') { inQuotes = true; continue; }
+    if (c === '"' && field === '') { inQuotes = true; continue; } // sonst Zoll-Zeichen wie 19"-Rack
     if (c === delim) { row.push(field); field = ''; continue; }
     if (c === '\n' || c === '\r') {
       if (c === '\r' && clean[i + 1] === '\n') i++;
@@ -66,6 +66,15 @@ export const IMPORT_FIELDS = [
   { key: 'country', label: 'Land', patterns: ['land', 'country'] },
   { key: 'notes', label: 'Notiz', patterns: ['notiz', 'bemerkung', 'kommentar', 'note', 'comment', 'info'] },
   { key: 'value', label: 'Dealwert', patterns: ['wert', 'volumen', 'value', 'budget', 'umsatz'] },
+  // Zusatzfelder (Messelisten). Reihenfolge zaehlt: "Signalstaerke" vor "Signal".
+  { key: 'produkt', label: 'Produkt / Tätigkeit', patterns: ['produkt', 'taetigkeit', 'tätigkeit', 'beschreibung', 'branche'] },
+  { key: 'prio', label: 'Prio', patterns: ['prio'] },
+  { key: 'kanal', label: 'Kanal (A = LinkedIn, B = Telefon)', patterns: ['kanal'] },
+  { key: 'halle_stand', label: 'Halle / Stand', patterns: ['halle', 'messestand'] },
+  { key: 'region', label: 'Region / Bundesland', patterns: ['region', 'bundesland'] },
+  { key: 'signalstaerke', label: 'Signalstärke (A/B/C)', patterns: ['signalst'] },
+  { key: 'signal', label: 'Signal-Hinweis', patterns: ['signal'] },
+  { key: 'signal_quelle', label: 'Quelle (Link)', patterns: ['quelle', 'fundstelle'] },
 ] as const;
 
 export type ImportFieldKey = (typeof IMPORT_FIELDS)[number]['key'];

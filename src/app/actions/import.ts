@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { ctx } from '@/lib/ctx';
 import type { ImportFieldKey } from '@/lib/csv';
+import { firmKey, firmenName, landName, ortUndRegion, prioAusSignal } from '@/lib/import-helpers';
 
 export type ImportRow = Partial<Record<ImportFieldKey, string>>;
 
@@ -10,8 +11,12 @@ export type ImportResult = {
   created: number;
   skipped: number;
   merged: number;
+  enriched: string[];
   errors: string[];
 };
+
+const signalNotiz = (staerke: string | null, signal: string, quelle: string | null, liste: string) =>
+  `Signal ${staerke ?? ''} (${liste}): ${signal}${quelle ? `\nQuelle: ${quelle}` : ''}`;
 
 const norm = (s?: string | null) => (s ?? '').trim().toLowerCase();
 const normDomain = (s?: string | null) =>
@@ -19,9 +24,11 @@ const normDomain = (s?: string | null) =>
 
 /**
  * Importiert Zeilen als Kontakt + Ansprechpartner + Deal.
- * Dubletten werden ueber E-Mail, Website-Domain oder Firmenname erkannt:
+ * Dubletten werden ueber E-Mail, Website-Domain oder Firmenname (auch ohne
+ * Rechtsform) erkannt:
  *  - "skip": Zeile ueberspringen
- *  - "merge": Person an den bestehenden Kontakt haengen, keinen neuen Deal
+ *  - "merge": bestehende Firma ergaenzen (neue Person, leere Zusatzfelder,
+ *    Signal mit Notiz), keinen neuen Deal
  */
 export async function importRows(input: {
   rows: ImportRow[];
@@ -30,7 +37,7 @@ export async function importRows(input: {
   duplicates: 'skip' | 'merge';
 }): Promise<ImportResult> {
   const { supabase, orgId, profile } = await ctx();
-  const result: ImportResult = { created: 0, skipped: 0, merged: 0, errors: [] };
+  const result: ImportResult = { created: 0, skipped: 0, merged: 0, enriched: [], errors: [] };
 
   let pipelineId: string | null = null;
   if (input.stageId) {
@@ -40,14 +47,17 @@ export async function importRows(input: {
 
   // Bestehende Kontakte fuer die Dublettenpruefung laden
   const [{ data: existing }, { data: persons }] = await Promise.all([
-    supabase.from('contacts').select('id, company, website').eq('org_id', orgId),
+    supabase.from('contacts').select('id, company, website, custom').eq('org_id', orgId),
     supabase.from('contact_persons').select('contact_id, email').eq('org_id', orgId),
   ]);
   const byCompany = new Map<string, string>();
   const byDomain = new Map<string, string>();
   const byEmail = new Map<string, string>();
+  const byKey = new Map<string, string>();
+  const customOf = new Map<string, Record<string, string | null>>();
   (existing ?? []).forEach((c) => {
-    if (c.company) byCompany.set(norm(c.company), c.id);
+    customOf.set(c.id, (c.custom ?? {}) as Record<string, string | null>);
+    if (c.company) { byCompany.set(norm(c.company), c.id); byKey.set(firmKey(c.company), c.id); }
     if (c.website) byDomain.set(normDomain(c.website), c.id);
   });
   (persons ?? []).forEach((p) => { if (p.email) byEmail.set(norm(p.email), p.contact_id); });
@@ -62,7 +72,23 @@ export async function importRows(input: {
         first = parts.join(' ');
       }
       const email = row.email?.trim() || null;
-      const company = row.company?.trim() || null;
+      const company = firmenName(row.company);
+      const t = (v?: string) => v?.trim() || null;
+      const ortInfo = ortUndRegion(row.city);
+      const signalstaerke = t(row.signalstaerke)?.toUpperCase() ?? null;
+      const signal = t(row.signal);
+      const custom: Record<string, string> = {};
+      const setze = (k: string, v: string | null) => { if (v) custom[k] = v; };
+      setze('messe', input.leadSource);
+      setze('prio', t(row.prio) ?? prioAusSignal(signalstaerke));
+      setze('kanal', t(row.kanal)?.toUpperCase() ?? null);
+      setze('halle_stand', t(row.halle_stand));
+      setze('region', t(row.region) ?? ortInfo.region);
+      setze('konzern', ortInfo.konzern);
+      setze('produkt', t(row.produkt));
+      setze('signal', signal);
+      setze('signalstaerke', signalstaerke);
+      setze('signal_quelle', t(row.signal_quelle));
       const website = row.website?.trim() || null;
       const label = company || [first, last].filter(Boolean).join(' ') || null;
       if (!label && !email && !row.phone) { result.skipped++; continue; }
@@ -70,7 +96,7 @@ export async function importRows(input: {
       const dupId =
         (email && byEmail.get(norm(email))) ||
         (website && byDomain.get(normDomain(website))) ||
-        (company && byCompany.get(norm(company))) || null;
+        (company && (byCompany.get(norm(company)) || byKey.get(firmKey(company)))) || null;
 
       if (dupId) {
         if (input.duplicates === 'skip') { result.skipped++; continue; }
@@ -81,6 +107,22 @@ export async function importRows(input: {
             email, phone: row.phone?.trim() || null, job_title: row.job_title?.trim() || null,
           });
           byEmail.set(norm(email), dupId);
+        }
+        // Zusatzfelder: leere Felder fuellen, Signal immer aktualisieren
+        const alt = customOf.get(dupId) ?? {};
+        const neu: Record<string, string | null> = { ...alt };
+        for (const [k, v] of Object.entries(custom)) {
+          if (k === 'messe') continue; // die Firma bleibt in ihrer urspruenglichen Liste
+          if (k.startsWith('signal') || !neu[k]) neu[k] = v;
+        }
+        if (JSON.stringify(neu) !== JSON.stringify(alt)) {
+          await supabase.from('contacts').update({ custom: neu }).eq('id', dupId);
+          customOf.set(dupId, neu);
+        }
+        if (signal && (alt.signal !== signal || alt.signalstaerke !== signalstaerke)) {
+          await supabase.from('notes').insert({ org_id: orgId, contact_id: dupId, user_id: profile.id,
+            body: signalNotiz(signalstaerke, signal, custom.signal_quelle ?? null, input.leadSource) });
+          result.enriched.push(`${company ?? label} (${signalstaerke ?? '–'})`);
         }
         result.merged++;
         continue;
@@ -93,10 +135,11 @@ export async function importRows(input: {
         company: label,
         website,
         postal_code: row.postal_code?.trim() || null,
-        city: row.city?.trim() || null,
-        country: row.country?.trim() || 'Deutschland',
+        city: ortInfo.ort,
+        country: landName(row.country) || 'Deutschland',
         lead_source: input.leadSource,
         notes: row.notes?.trim() || null,
+        custom,
         owner_id: profile.id,
         created_by: profile.id,
       });
@@ -114,16 +157,36 @@ export async function importRows(input: {
         await supabase.from('deals').insert({
           org_id: orgId, contact_id: contactId, pipeline_id: pipelineId, stage_id: input.stageId,
           title: label ?? 'Import', value, source: input.leadSource, owner_id: profile.id, setter_id: profile.id,
+          custom: { ...(custom.prio ? { prio: custom.prio } : {}), ...(custom.kanal ? { kanal: custom.kanal } : {}) },
         });
       }
+      if (signal) {
+        await supabase.from('notes').insert({ org_id: orgId, contact_id: contactId, user_id: profile.id,
+          body: signalNotiz(signalstaerke, signal, custom.signal_quelle ?? null, input.leadSource) });
+      }
+      customOf.set(contactId, custom);
 
-      if (company) byCompany.set(norm(company), contactId);
+      if (company) { byCompany.set(norm(company), contactId); byKey.set(firmKey(company), contactId); }
       if (website) byDomain.set(normDomain(website), contactId);
       if (email) byEmail.set(norm(email), contactId);
       result.created++;
     } catch (e) {
       result.errors.push(`Zeile ${i + 2}: ${e instanceof Error ? e.message : 'Fehler'}`);
     }
+  }
+
+  // Filter fuer Signallisten einmalig anlegen
+  if (input.rows.some((r) => r.signalstaerke?.trim())) {
+    const { data: have } = await supabase.from('saved_filters').select('name').eq('org_id', orgId).eq('entity', 'deals');
+    const vorhanden = new Set((have ?? []).map((f) => f.name));
+    const neue = [
+      { name: 'Signal A (stark)', definition: { groups: [[{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }]] } },
+      { name: 'Signal A + B', definition: { groups: [
+        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'A' }],
+        [{ field: 'custom.signalstaerke', operator: 'eq', value: 'B' }],
+      ] } },
+    ].filter((f) => !vorhanden.has(f.name));
+    if (neue.length) await supabase.from('saved_filters').insert(neue.map((f) => ({ org_id: orgId, user_id: profile.id, entity: 'deals', ...f })));
   }
 
   revalidatePath('/kontakte');
