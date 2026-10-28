@@ -1,4 +1,5 @@
 import { ctx } from '@/lib/ctx';
+import { nurPassendeFilter } from '@/lib/listenfilter';
 import ContactsView from '@/components/ContactsView';
 import { applyFilter, CONTACT_FIELDS, parseFilterParam } from '@/lib/filters';
 import type { ContactWithPersons, SavedFilter, Stage } from '@/lib/types';
@@ -9,7 +10,7 @@ export default async function ContactsPage({
   const { q, filter, open } = await searchParams;
   const { supabase, orgId } = await ctx();
 
-  const [{ data: contacts }, { data: saved }, { data: stages }] = await Promise.all([
+  const [{ data: contacts }, { data: saved }, { data: stages }, { data: quellen }] = await Promise.all([
     supabase
       .from('contacts')
       .select('*, persons:contact_persons(*), deals(id, status, stage_id, pipeline_id, stage:pipeline_stages(name, color), pipeline:pipelines(name))')
@@ -21,6 +22,7 @@ export default async function ContactsPage({
     // in der Kontaktliste direkt umstellen. Die Zeilensicherheit begrenzt
     // das bereits auf die eigene Organisation.
     supabase.from('pipeline_stages').select('*').order('position'),
+    supabase.from('contacts').select('lead_source').eq('org_id', orgId).not('lead_source', 'is', null),
   ]);
 
   let rows = (contacts ?? []) as ContactWithPersons[];
@@ -49,7 +51,8 @@ export default async function ContactsPage({
       <ContactsView
         rows={rows}
         filter={def}
-        savedFilters={(saved ?? []) as SavedFilter[]}
+        savedFilters={nurPassendeFilter((saved ?? []) as SavedFilter[],
+          new Set((quellen ?? []).map((c) => c.lead_source as string)))}
         stages={(stages ?? []) as Stage[]}
         initialOpen={open ?? null}
       />

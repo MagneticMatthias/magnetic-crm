@@ -1,4 +1,5 @@
 import { ctx } from '@/lib/ctx';
+import { nurPassendeFilter } from '@/lib/listenfilter';
 import { Empty } from '@/components/ui';
 import PipelineView from '@/components/PipelineView';
 import { applyFilter, DEAL_FIELDS, parseFilterParam } from '@/lib/filters';
@@ -77,7 +78,8 @@ export default async function PipelinesPage({
         counts={counts}
         rows={rows}
         filter={def}
-        savedFilters={(saved ?? []) as SavedFilter[]}
+        savedFilters={nurPassendeFilter((saved ?? []) as SavedFilter[],
+          new Set(((deals ?? []) as DealWithContact[]).map((d) => d.source).filter((x): x is string => !!x)))}
         contacts={(contacts ?? []) as ContactWithPersons[]}
         team={(team ?? []) as Profile[]}
         initialOpen={open ?? null}

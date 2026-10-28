@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { ctx } from '@/lib/ctx';
 import type { ImportFieldKey } from '@/lib/csv';
 import { firmKey, firmenName, landName, ortUndRegion, prioAusSignal } from '@/lib/import-helpers';
+import { listeVonFilter } from '@/lib/listenfilter';
 
 export type ImportRow = Partial<Record<ImportFieldKey, string>>;
 
@@ -208,25 +209,16 @@ export async function importRows(input: {
     }
   }
 
-  // Gespeicherte Filter fuer die Liste einmalig anlegen (wie beim Skript-Import)
+  // Ein gespeicherter Filter je Liste (Kontakte und Deals), mehr nicht
   const liste = input.leadSource;
-  const quelle = { field: 'source', operator: 'eq', value: liste };
-  const mitSignal = input.rows.some((r) => r.signalstaerke?.trim());
   const filter = [
     { entity: 'contacts', name: liste, definition: { groups: [[{ field: 'lead_source', operator: 'eq', value: liste }]] } },
-    { entity: 'deals', name: liste, definition: { groups: [[quelle]] } },
-    { entity: 'deals', name: `${liste} · noch nicht angerufen`, definition: { groups: [[quelle, { field: 'last_contacted_at', operator: 'is_empty', value: '' }]] } },
-    ...(mitSignal ? [
-      { entity: 'deals', name: `${liste} · Signal A`, definition: { groups: [[quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'A' }]] } },
-      { entity: 'deals', name: `${liste} · Signal A + B`, definition: { groups: [
-        [quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'A' }],
-        [quelle, { field: 'custom.signalstaerke', operator: 'eq', value: 'B' }],
-      ] } },
-    ] : []),
+    { entity: 'deals', name: liste, definition: { groups: [[{ field: 'source', operator: 'eq', value: liste }]] } },
   ];
-  const { data: have } = await supabase.from('saved_filters').select('name, entity').eq('org_id', orgId);
+  const { data: have } = await supabase.from('saved_filters').select('id, name, entity, definition').eq('org_id', orgId);
   const neue = filter.filter((f) => !(have ?? []).some((h) => h.name === f.name && h.entity === f.entity));
   if (neue.length) await supabase.from('saved_filters').insert(neue.map((f) => ({ org_id: orgId, user_id: profile.id, ...f })));
+  await verwaisteListenFilterLoeschen(supabase, orgId, have ?? []);
 
   revalidatePath('/kontakte');
   revalidatePath('/pipelines');
@@ -251,4 +243,29 @@ export async function deleteAllData(confirmation: string): Promise<{ ok: boolean
 
   revalidatePath('/', 'layout');
   return { ok: true, message: 'Alle Kontakte, Deals, Aktivitäten, Notizen und Aufgaben wurden gelöscht.' };
+}
+
+type FilterZeile = { id: string; name: string; entity: string; definition: unknown };
+
+/**
+ * Loescht automatisch angelegte Listen-Filter ("Liste", "Liste · …"), deren
+ * Liste es nicht mehr gibt - z. B. weil alle Firmen beim Import in eine
+ * neue Liste uebernommen wurden. Selbst gebaute Filter mit anderem Namen
+ * bleiben unangetastet.
+ */
+async function verwaisteListenFilterLoeschen(
+  supabase: Awaited<ReturnType<typeof ctx>>['supabase'], orgId: string, filter: FilterZeile[],
+) {
+  const listeVon = (f: FilterZeile) => listeVonFilter(f);
+  const kandidaten = [...new Set(filter.map(listeVon).filter((v): v is string => !!v))];
+  for (const liste of kandidaten) {
+    const [{ count: d }, { count: k }] = await Promise.all([
+      supabase.from('deals').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('source', liste),
+      supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('lead_source', liste),
+    ]);
+    if ((d ?? 0) === 0 && (k ?? 0) === 0) {
+      const ids = filter.filter((f) => listeVon(f) === liste).map((f) => f.id);
+      if (ids.length) await supabase.from('saved_filters').delete().in('id', ids);
+    }
+  }
 }
