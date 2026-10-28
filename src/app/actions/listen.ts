@@ -54,3 +54,45 @@ export async function renameList(formData: FormData) {
   revalidatePath('/', 'layout');
   redirect(zurueck(neu));
 }
+
+/**
+ * Legt fuer alle Firmen einer Liste, die in der Pipeline noch keinen Deal
+ * haben, einen Deal in der ersten offenen Phase an. Hat die Firma einen
+ * offenen Deal dieser Liste in einer anderen Pipeline, wird dieser
+ * verschoben statt verdoppelt.
+ */
+export async function dealsFuerListeAnlegen(formData: FormData) {
+  const liste = String(formData.get('liste') ?? '').trim();
+  const pipelineId = String(formData.get('p') ?? '');
+  if (!liste || !pipelineId) return;
+  const { supabase, orgId, profile } = await ctx();
+
+  const [{ data: stages }, { data: kontakte }, { data: deals }] = await Promise.all([
+    supabase.from('pipeline_stages').select('id, name, position, is_won, is_lost').eq('pipeline_id', pipelineId).order('position'),
+    supabase.from('contacts').select('id, company, custom').eq('org_id', orgId).eq('lead_source', liste),
+    supabase.from('deals').select('id, contact_id, pipeline_id, source, status').eq('org_id', orgId),
+  ]);
+  const offen = (stages ?? []).filter((s) => !s.is_won && !s.is_lost);
+  const start = offen.find((s) => s.name.trim().toLowerCase() === 'offen') ?? offen[0];
+  if (!start) throw new Error('Die Pipeline hat keine offene Phase.');
+
+  const alle = deals ?? [];
+  for (const k of kontakte ?? []) {
+    if (alle.some((d) => d.contact_id === k.id && d.pipeline_id === pipelineId)) continue;
+    const woanders = alle.find((d) => d.contact_id === k.id && d.status === 'offen' && d.source === liste);
+    if (woanders) {
+      await supabase.from('deals').update({ pipeline_id: pipelineId, stage_id: start.id }).eq('id', woanders.id);
+      continue;
+    }
+    const c = (k.custom ?? {}) as Record<string, string | null>;
+    const { error } = await supabase.from('deals').insert({
+      org_id: orgId, contact_id: k.id, pipeline_id: pipelineId, stage_id: start.id,
+      title: k.company ?? 'Import', source: liste, owner_id: profile.id, setter_id: profile.id,
+      custom: { ...(c.prio ? { prio: c.prio } : {}), ...(c.kanal ? { kanal: c.kanal } : {}) },
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath('/', 'layout');
+  redirect(`/listen?${new URLSearchParams({ p: pipelineId, liste }).toString()}`);
+}

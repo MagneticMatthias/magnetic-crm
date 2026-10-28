@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
-  DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent,
+  DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors,
+  type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import {
-  Search, Filter as FilterIcon, ChevronUp, ChevronDown, Plus, Trash2, GripVertical, ArrowUp, ArrowDown,
+  Search, Filter as FilterIcon, ChevronUp, ChevronDown, Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Check,
 } from 'lucide-react';
 import FilterBuilder from '@/components/FilterBuilder';
 import ColumnPicker from './ColumnPicker';
@@ -50,7 +50,9 @@ function HeaderCell<T>({
   onSort: () => void;
   onResize: (w: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: col.key });
+  const { attributes, listeners, setNodeRef, isDragging, isOver, activeIndex, index } = useSortable({ id: col.key });
+  // Einfuegemarke links oder rechts, je nachdem woher die gezogene Spalte kommt
+  const marke = isOver && !isDragging ? (activeIndex > index ? 'left' : 'right') : null;
   const active = sort?.key === col.key;
 
   const startResize = (e: React.PointerEvent) => {
@@ -67,12 +69,13 @@ function HeaderCell<T>({
   return (
     <th
       ref={setNodeRef}
-      style={{ width, minWidth: width, maxWidth: width, transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      style={{ width, minWidth: width, maxWidth: width, opacity: isDragging ? 0.35 : 1 }}
       className="group relative select-none px-0 py-0 text-left"
     >
+      {marke && <span className={`absolute inset-y-1 ${marke === 'left' ? 'left-0' : 'right-0'} w-0.5 rounded bg-brand`} />}
       <div className="flex items-center gap-1 pr-2">
         <button type="button" {...attributes} {...listeners}
-                className="cursor-grab touch-none px-1 py-3 text-muted/40 hover:text-muted active:cursor-grabbing"
+                className="cursor-grab touch-none px-1 py-3 text-muted/60 hover:text-brand active:cursor-grabbing"
                 aria-label="Spalte verschieben" title="Ziehen zum Verschieben">
           <GripVertical size={13} />
         </button>
@@ -163,7 +166,10 @@ export default function RecordTable<T extends { id: string }>({
   const toggleSort = (key: string) =>
     update({ sort: layout.sort?.key === key ? (layout.sort.dir === 'asc' ? { key, dir: 'desc' } : null) : { key, dir: 'asc' } });
 
+  const [gezogen, setGezogen] = useState<string | null>(null);
+  const onDragStart = (e: DragStartEvent) => setGezogen(String(e.active.id));
   const onDragEnd = (e: DragEndEvent) => {
+    setGezogen(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const from = layout.order.indexOf(String(active.id)), to = layout.order.indexOf(String(over.id));
@@ -172,6 +178,9 @@ export default function RecordTable<T extends { id: string }>({
   };
 
   const activeRules = countRules(filter);
+  // Ist der aktive Filter ein gespeicherter? Dann zeigen wir seinen Namen.
+  const filterJson = filter ? JSON.stringify(filter) : null;
+  const aktiverFilter = filterJson ? savedFilters.find((f) => JSON.stringify(f.definition) === filterJson) ?? null : null;
   const allSelected = sorted.length > 0 && sorted.every((r) => selected.has(r.id));
   const totalWidth = 44 + shown.reduce((a, c) => a + widthOf(c), 0);
 
@@ -186,8 +195,11 @@ export default function RecordTable<T extends { id: string }>({
         <div className="relative">
           <button type="button" className={`btn-ghost ${activeRules ? '!border-brand !text-brand' : ''}`}
                   onClick={() => setFilterOpen((s) => (s === 'closed' ? 'menu' : 'closed'))}>
-            <FilterIcon size={15} /> Filter
-            {activeRules > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] text-white">{activeRules}</span>}
+            <FilterIcon size={15} />
+            {aktiverFilter
+              ? <span className="max-w-[16rem] truncate" title={aktiverFilter.name}>{aktiverFilter.name}</span>
+              : 'Filter'}
+            {activeRules > 0 && !aktiverFilter && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] text-white">{activeRules}</span>}
             {filterOpen === 'closed' ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>
 
@@ -196,12 +208,14 @@ export default function RecordTable<T extends { id: string }>({
               <div className="fixed inset-0 z-10" onClick={() => setFilterOpen('closed')} />
               <div className="card absolute left-0 z-20 mt-1.5 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto p-1.5 shadow-xl">
                 {savedFilters.map((f) => (
-                  <div key={f.id} className="group flex items-center rounded-md hover:bg-surface-2">
+                  <div key={f.id} className={`group flex items-center rounded-md ${aktiverFilter?.id === f.id ? 'bg-brand-soft text-brand' : 'hover:bg-surface-2'}`}>
                     <button type="button"
                             onClick={() => { setParam('filter', encodeURIComponent(JSON.stringify(f.definition))); setFilterOpen('closed'); }}
                             title={f.name}
                             className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-1.5 text-left text-[13px] leading-snug">
-                      <FilterIcon size={13} className="mt-0.5 shrink-0 text-muted" />
+                      {aktiverFilter?.id === f.id
+                        ? <Check size={13} className="mt-0.5 shrink-0" />
+                        : <FilterIcon size={13} className="mt-0.5 shrink-0 text-muted" />}
                       <span className="break-words">{f.name}</span>
                     </button>
                     <button type="button" aria-label="Gespeicherten Filter löschen" title="Filter löschen"
@@ -274,7 +288,8 @@ export default function RecordTable<T extends { id: string }>({
       </div>
 
       <div className="overflow-x-auto">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter}
+                    onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setGezogen(null)}>
           <table className="table-fixed border-collapse" style={{ width: totalWidth, minWidth: '100%' }}>
             <thead className="bg-surface-2/60">
               <tr>
@@ -282,7 +297,7 @@ export default function RecordTable<T extends { id: string }>({
                   <input type="checkbox" checked={allSelected} aria-label="Alle auswählen"
                          onChange={() => setSelected(allSelected ? new Set() : new Set(sorted.map((r) => r.id)))} />
                 </th>
-                <SortableContext items={layout.order} strategy={horizontalListSortingStrategy}>
+                <SortableContext items={shown.map((c) => c.key)} strategy={horizontalListSortingStrategy}>
                   {shown.map((c) => (
                     <HeaderCell key={c.key} col={c} width={widthOf(c)} sort={layout.sort}
                                 onSort={() => toggleSort(c.key)}
@@ -322,6 +337,13 @@ export default function RecordTable<T extends { id: string }>({
               })}
             </tbody>
           </table>
+          <DragOverlay dropAnimation={null}>
+            {gezogen && (
+              <div className="card flex cursor-grabbing items-center gap-1.5 px-3 py-2 text-[13px] font-medium shadow-lg">
+                <GripVertical size={13} className="text-brand" /> {byKey.get(gezogen)?.label}
+              </div>
+            )}
+          </DragOverlay>
         </DndContext>
       </div>
     </div>

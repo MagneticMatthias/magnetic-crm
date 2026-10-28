@@ -15,7 +15,10 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mapping, setMapping] = useState<Record<number, ImportFieldKey | ''>>({});
   const [leadSource, setLeadSource] = useState('');
-  const [stageId, setStageId] = useState(stageOptions[0]?.id ?? '');
+  // Vorauswahl: Kaltakquise -> Offen, sonst die erste Phase
+  const [stageId, setStageId] = useState(
+    stageOptions.find((o) => /kaltakquise/i.test(o.label) && /offen$/i.test(o.label))?.id ?? stageOptions[0]?.id ?? '');
+  const [ziehen, setZiehen] = useState(false);
   const [duplicates, setDuplicates] = useState<'skip' | 'merge' | 'replace'>('replace');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -49,14 +52,14 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
     if (!parsed) return;
     setBusy(true);
     setResult(null);
-    const total: ImportResult = { created: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
+    const total: ImportResult = { created: 0, deals: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
     const chunk = 50;
     for (let i = 0; i < rows.length; i += chunk) {
       const part = await importRows({
         rows: rows.slice(i, i + chunk), leadSource: leadSource.trim() || 'Import',
         stageId: stageId || null, duplicates,
       });
-      total.created += part.created; total.skipped += part.skipped;
+      total.created += part.created; total.deals += part.deals; total.skipped += part.skipped;
       total.merged += part.merged; total.moved += part.moved; total.enriched.push(...part.enriched); total.errors.push(...part.errors);
       setProgress(Math.min(100, Math.round(((i + chunk) / rows.length) * 100)));
     }
@@ -71,7 +74,16 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
       <section className="card p-5">
         <h2 className="text-sm font-semibold">1. Datei auswählen</h2>
         <p className="mt-1 text-sm text-muted">CSV oder aus Excel „Speichern unter → CSV UTF-8“. Trennzeichen wird automatisch erkannt.</p>
-        <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-8 text-center transition hover:border-brand hover:bg-brand-soft/30">
+        <label
+          onDragOver={(e) => { e.preventDefault(); setZiehen(true); }}
+          onDragLeave={() => setZiehen(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setZiehen(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f) void onFile(f);
+          }}
+          className={`mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition hover:border-brand hover:bg-brand-soft/30 ${ziehen ? 'border-brand bg-brand-soft/40' : 'border-line'}`}>
           <Upload size={22} className="text-brand" />
           <span className="text-sm font-medium">{fileName || 'Datei hierher ziehen oder klicken'}</span>
           {parsed && <span className="text-xs text-muted">{parsed.rows.length} Zeilen · {parsed.headers.length} Spalten</span>}
@@ -172,7 +184,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
             {result && (
               <div className="mt-4 rounded-lg bg-win/10 p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-win"><Check size={16} /> Import abgeschlossen</p>
-                <p className="mt-1">{result.created} neu angelegt · {result.moved} in diese Liste übernommen · {result.merged} ergänzt · {result.skipped} übersprungen</p>
+                <p className="mt-1">{result.created} neu angelegt · {result.deals} Deals angelegt · {result.moved} in diese Liste übernommen · {result.merged} ergänzt · {result.skipped} übersprungen</p>
                 {result.enriched.length > 0 && (
                   <p className="mt-1 text-muted">Signal ergänzt bei: {result.enriched.join(', ')}</p>
                 )}

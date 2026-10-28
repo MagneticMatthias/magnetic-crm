@@ -9,6 +9,7 @@ export type ImportRow = Partial<Record<ImportFieldKey, string>>;
 
 export type ImportResult = {
   created: number;
+  deals: number;
   skipped: number;
   merged: number;
   moved: number;
@@ -41,7 +42,7 @@ export async function importRows(input: {
   duplicates: 'skip' | 'merge' | 'replace';
 }): Promise<ImportResult> {
   const { supabase, orgId, profile } = await ctx();
-  const result: ImportResult = { created: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
+  const result: ImportResult = { created: 0, deals: 0, skipped: 0, merged: 0, moved: 0, enriched: [], errors: [] };
 
   let pipelineId: string | null = null;
   if (input.stageId) {
@@ -137,10 +138,12 @@ export async function importRows(input: {
             await supabase.from('deals').update({ source: input.leadSource, custom: { ...(d.custom ?? {}), ...dealCustom } }).eq('id', d.id);
           }
           if (!deals?.length && input.stageId && pipelineId) {
-            await supabase.from('deals').insert({
+            const { error: dErr } = await supabase.from('deals').insert({
               org_id: orgId, contact_id: dupId, pipeline_id: pipelineId, stage_id: input.stageId,
               title: company ?? label ?? 'Import', source: input.leadSource, owner_id: profile.id, setter_id: profile.id, custom: dealCustom,
             });
+            if (dErr) throw new Error(`Deal: ${dErr.message}`);
+            result.deals++;
           }
           result.moved++;
         } else if (JSON.stringify(neu) !== JSON.stringify(alt)) {
@@ -182,11 +185,13 @@ export async function importRows(input: {
 
       if (input.stageId && pipelineId) {
         const value = Number(String(row.value ?? '0').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-        await supabase.from('deals').insert({
+        const { error: dErr } = await supabase.from('deals').insert({
           org_id: orgId, contact_id: contactId, pipeline_id: pipelineId, stage_id: input.stageId,
           title: label ?? 'Import', value, source: input.leadSource, owner_id: profile.id, setter_id: profile.id,
           custom: { ...(custom.prio ? { prio: custom.prio } : {}), ...(custom.kanal ? { kanal: custom.kanal } : {}) },
         });
+        if (dErr) throw new Error(`Deal: ${dErr.message}`);
+        result.deals++;
       }
       if (signal) {
         await supabase.from('notes').insert({ org_id: orgId, contact_id: contactId, user_id: profile.id,

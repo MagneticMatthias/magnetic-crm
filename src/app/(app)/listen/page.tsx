@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ctx } from '@/lib/ctx';
 import { PageHeader, Stat } from '@/components/ui';
-import { renameList } from '@/app/actions/listen';
+import { renameList, dealsFuerListeAnlegen } from '@/app/actions/listen';
 import { FunnelBars } from '@/components/Charts';
 import { num, pct } from '@/lib/format';
 import { REACHED_OUTCOMES } from '@/lib/labels';
@@ -18,10 +18,11 @@ export default async function ListenPage({
   const { liste, p } = await searchParams;
   const { supabase, orgId } = await ctx();
 
-  const [{ data: pipelines }, { data: stages }, { data: deals }] = await Promise.all([
+  const [{ data: pipelines }, { data: stages }, { data: deals }, { data: kontakte }] = await Promise.all([
     supabase.from('pipelines').select('*').eq('org_id', orgId).eq('archived', false).order('position'),
     supabase.from('pipeline_stages').select('*').order('position'),
     supabase.from('deals').select('id, source, stage_id, pipeline_id, status, contact_id').eq('org_id', orgId),
+    supabase.from('contacts').select('id, lead_source').eq('org_id', orgId).not('lead_source', 'is', null),
   ]);
 
   const pipelineList = (pipelines ?? []) as Pipeline[];
@@ -38,7 +39,17 @@ export default async function ListenPage({
 
   // Listen = Leadherkunft der Deals in dieser Pipeline
   const listen = [...new Set(alle.map((d) => d.source || 'Ohne Liste'))].sort((a, b) => a.localeCompare(b, 'de'));
-  const aktiv = liste && listen.includes(liste) ? liste : null;
+  // Firmen einer Liste ohne Deal in dieser Pipeline - tauchen sonst in keinem Deal-Filter auf
+  const mitDealHier = new Set(alle.map((d) => d.contact_id));
+  const ohneDeal = new Map<string, number>();
+  for (const k of kontakte ?? []) {
+    if (k.lead_source && k.lead_source !== 'Bestandskunde' && !mitDealHier.has(k.id)) {
+      ohneDeal.set(k.lead_source, (ohneDeal.get(k.lead_source) ?? 0) + 1);
+    }
+  }
+  // Listen, die es nur als Kontakte gibt, gehoeren auch in die Auswahl
+  const nurKontakte = [...ohneDeal.keys()].filter((l) => !listen.includes(l) && (deals ?? []).every((d) => d.source !== l));
+  const aktiv = liste && (listen.includes(liste) || nurKontakte.includes(liste)) ? liste : null;
   const rows = aktiv ? alle.filter((d) => (d.source || 'Ohne Liste') === aktiv) : alle;
 
   // Aktivitaeten zu diesen Deals
@@ -98,6 +109,30 @@ export default async function ListenPage({
             </Link>
           ))}
         </div>
+
+        {nurKontakte.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted">Listen ohne Deals:</span>
+            {nurKontakte.map((l) => (
+              <Link key={l} href={href({ liste: l })} className={aktiv === l ? 'btn-primary' : 'btn-ghost'}>
+                {l} <span className="ml-1 text-xs opacity-70">{ohneDeal.get(l)}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {aktiv && (ohneDeal.get(aktiv) ?? 0) > 0 && (
+          <form action={dealsFuerListeAnlegen}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-sm">
+            <input type="hidden" name="liste" value={aktiv} />
+            <input type="hidden" name="p" value={pipeline.id} />
+            <span>
+              <b>{ohneDeal.get(aktiv)} Firmen</b> dieser Liste haben in {pipeline.name} noch keinen Deal.
+              Deshalb fehlen sie in der Pipeline und in den Filtern.
+            </span>
+            <button className="btn-primary">Deals anlegen</button>
+          </form>
+        )}
 
         {aktiv && aktiv !== 'Ohne Liste' && (
           <form action={renameList} className="flex flex-wrap items-center gap-2">
