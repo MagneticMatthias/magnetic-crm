@@ -194,14 +194,15 @@ export default function RecordTable<T extends { id: string }>({
           {filterOpen === 'menu' && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setFilterOpen('closed')} />
-              <div className="card absolute left-0 z-20 mt-1.5 w-64 p-1.5 shadow-xl">
+              <div className="card absolute left-0 z-20 mt-1.5 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto p-1.5 shadow-xl">
                 {savedFilters.map((f) => (
                   <div key={f.id} className="group flex items-center rounded-md hover:bg-surface-2">
                     <button type="button"
                             onClick={() => { setParam('filter', encodeURIComponent(JSON.stringify(f.definition))); setFilterOpen('closed'); }}
-                            className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-[13px]">
-                      <FilterIcon size={13} className="shrink-0 text-muted" />
-                      <span className="truncate">{f.name}</span>
+                            title={f.name}
+                            className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-1.5 text-left text-[13px] leading-snug">
+                      <FilterIcon size={13} className="mt-0.5 shrink-0 text-muted" />
+                      <span className="break-words">{f.name}</span>
                     </button>
                     <button type="button" aria-label="Gespeicherten Filter löschen" title="Filter löschen"
                             onClick={async (e) => {
