@@ -112,7 +112,7 @@ export default async function ListenPage({
 
         {nurKontakte.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted">Listen ohne Deals:</span>
+            <span className="text-muted">Noch nicht in der {pipeline.name}:</span>
             {nurKontakte.map((l) => (
               <Link key={l} href={href({ liste: l })} className={aktiv === l ? 'btn-primary' : 'btn-ghost'}>
                 {l} <span className="ml-1 text-xs opacity-70">{ohneDeal.get(l)}</span>
@@ -127,10 +127,9 @@ export default async function ListenPage({
             <input type="hidden" name="liste" value={aktiv} />
             <input type="hidden" name="p" value={pipeline.id} />
             <span>
-              <b>{ohneDeal.get(aktiv)} Firmen</b> dieser Liste haben in {pipeline.name} noch keinen Deal.
-              Deshalb fehlen sie in der Pipeline und in den Filtern.
+              <b>{ohneDeal.get(aktiv)} Firmen</b> aus dieser Liste fehlen noch in der {pipeline.name}.
             </span>
-            <button className="btn-primary">Deals anlegen</button>
+            <button className="btn-primary">Jetzt aufnehmen</button>
           </form>
         )}
 

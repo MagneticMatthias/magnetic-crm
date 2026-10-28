@@ -19,7 +19,16 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
   const [stageId, setStageId] = useState(
     stageOptions.find((o) => /kaltakquise/i.test(o.label) && /offen$/i.test(o.label))?.id ?? stageOptions[0]?.id ?? '');
   const [ziehen, setZiehen] = useState(false);
-  const [duplicates, setDuplicates] = useState<'skip' | 'merge' | 'replace'>('replace');
+  const pipelineZiele = useMemo(() => {
+    const m = new Map<string, StageOption>();
+    for (const o of stageOptions) {
+      const [pipe, phase] = o.label.split(' → ');
+      const bisher = m.get(pipe);
+      if (!bisher || (/^offen$/i.test(phase ?? '') && !/ → offen$/i.test(bisher.label))) m.set(pipe, o);
+    }
+    return [...m.entries()].map(([pipe, o]) => ({ id: o.id, label: `${pipe} (Phase ${o.label.split(' → ')[1]})` }));
+  }, [stageOptions]);
+  const duplicates = 'replace' as const;
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -133,35 +142,23 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
 
           {/* Schritt 3: Ziel */}
           <section className="card p-5">
-            <h2 className="text-sm font-semibold">3. Wohin damit?</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <h2 className="text-sm font-semibold">3. Name der Liste</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="label" htmlFor="imp-source">Leadherkunft (Listenname)</label>
+                <label className="label" htmlFor="imp-source">So heißt die Liste im CRM</label>
                 <input id="imp-source" className="input" list="imp-sources" value={leadSource}
-                       onChange={(e) => setLeadSource(e.target.value)} placeholder="z. B. Messe DMEXCO 2026" />
+                       onChange={(e) => setLeadSource(e.target.value)} placeholder="z. B. electronica 2026 Signale" />
                 <datalist id="imp-sources">{LEAD_SOURCES.map((s) => <option key={s} value={s} />)}</datalist>
               </div>
               <div>
-                <label className="label" htmlFor="imp-stage">Deal anlegen in Phase</label>
+                <label className="label" htmlFor="imp-stage">Die Firmen landen in</label>
                 <select id="imp-stage" className="input" value={stageId} onChange={(e) => setStageId(e.target.value)}>
-                  <option value="">– nur Kontakte, kein Deal –</option>
-                  {stageOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label" htmlFor="imp-dup">Bei Dubletten</label>
-                <select id="imp-dup" className="input" value={duplicates}
-                        onChange={(e) => setDuplicates(e.target.value as 'skip' | 'merge' | 'replace')}>
-                  <option value="replace">In diese Liste übernehmen (alter Eintrag wird ersetzt)</option>
-                  <option value="merge">Bestehende Firma nur ergänzen</option>
-                  <option value="skip">Zeile überspringen</option>
+                  {pipelineZiele.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Dubletten erkennt der Import an E-Mail, Website oder Firmenname, auch ohne „GmbH“. Eine vorhandene Firma bekommt nie einen zweiten Deal.
-              {duplicates === 'replace' && ' Beim Übernehmen wandert die Firma samt Deal in diese Liste und bekommt die Daten aus der Datei. Anrufe, Notizen und Aufgaben bleiben erhalten.'}
-              {duplicates === 'merge' && ' Beim Ergänzen bleibt die Firma in ihrer alten Liste. Neue Personen, leere Zusatzfelder und das Signal kommen dazu.'}
+              Firmen, die schon im CRM sind, werden nicht doppelt angelegt. Sie wandern in diese Liste, ihre Anrufe und Notizen bleiben erhalten.
             </p>
           </section>
 
@@ -184,7 +181,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
             {result && (
               <div className="mt-4 rounded-lg bg-win/10 p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-win"><Check size={16} /> Import abgeschlossen</p>
-                <p className="mt-1">{result.created} neu angelegt · {result.deals} Deals angelegt · {result.moved} in diese Liste übernommen · {result.merged} ergänzt · {result.skipped} übersprungen</p>
+                <p className="mt-1">{result.created + result.moved} Firmen in der Liste · davon {result.created} neu und {result.moved} schon vorher im CRM{result.skipped ? ` · ${result.skipped} leere Zeilen übersprungen` : ''}</p>
                 {result.enriched.length > 0 && (
                   <p className="mt-1 text-muted">Signal ergänzt bei: {result.enriched.join(', ')}</p>
                 )}
