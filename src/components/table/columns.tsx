@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
+import { UserSearch, Users, ListTree, ExternalLink, Phone, ChevronDown, Check } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import LinkedInIcon from '@/components/LinkedInIcon';
 import { setDealStage, updateContactCustom } from '@/app/actions/records';
@@ -39,6 +39,12 @@ const Firma = ({ name }: { name: string | null | undefined }) => {
            target="_blank" rel="noreferrer noopener" title="Bei LinkedIn suchen" aria-label="Bei LinkedIn suchen"
            className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
           <LinkedInIcon size={13} />
+        </a>
+        {/* Personen dieser Firma mit "Marketing" in der Position */}
+        <a href={`https://www.linkedin.com/search/results/people/?company=${encodeURIComponent(name)}&titleFreeText=Marketing`}
+           target="_blank" rel="noreferrer noopener" title="Marketing-Leute dieser Firma auf LinkedIn" aria-label="Marketing-Leute auf LinkedIn suchen"
+           className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
+          <UserSearch size={13} />
         </a>
         <CopyButton text={name} label="Namen kopieren" small />
       </span>
