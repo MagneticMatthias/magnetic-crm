@@ -8,7 +8,7 @@ import {
   ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
 } from 'lucide-react';
 import {
-  loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
+  updateContactFields, addPerson, updatePerson, deletePerson,
   setPrimaryPerson, setDealStage, createDealForContact, createNote, togglePinNote,
   deleteNote, deleteContactRecord, updateDealFields, updateDealCustom, dealZuFaden, type ContactDetail,
 } from '@/app/actions/records';
@@ -43,6 +43,13 @@ const CUSTOM_LABEL: Record<string, string> = {
 };
 
 /* ------------------------- kleine Bausteine ------------------------- */
+
+/** Deal-Ansicht laden - ueber eine eigene Route, nicht hinter laufenden Server-Aktionen */
+async function ladeDetail(contactId: string, dealId: string | null): Promise<ContactDetail | null> {
+  const q = new URLSearchParams({ id: contactId, ...(dealId ? { deal: dealId } : {}) });
+  const r = await fetch(`/api/kontakt?${q.toString()}`, { cache: 'no-store' });
+  return r.ok ? (await r.json()) as ContactDetail | null : null;
+}
 
 const inTagen = (n: number) => {
   const d = new Date();
@@ -374,14 +381,14 @@ export default function DetailPanel({
   const [pending, startTransition] = useTransition();
 
   const reload = useCallback(async () => {
-    const d = await loadContactDetail(contactId, dealId);
+    const d = await ladeDetail(contactId, dealId);
     setData(d);
     setLoading(false);
   }, [contactId, dealId]);
 
   useEffect(() => {
     let cancelled = false;
-    loadContactDetail(contactId, dealId).then((d) => {
+    ladeDetail(contactId, dealId).then((d) => {
       if (cancelled) return;
       setData(d);
       setLoading(false);

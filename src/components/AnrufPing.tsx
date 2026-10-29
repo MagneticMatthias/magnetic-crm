@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Phone, X } from 'lucide-react';
-import { syncAnrufe, type NeuerAnruf } from '@/app/actions/anrufe';
+import type { NeuerAnruf } from '@/app/actions/anrufe';
 
 const INTERVALL_MS = 15 * 1000;
 
@@ -23,7 +23,7 @@ export default function AnrufPing() {
     let aktiv = true;
     const lauf = async () => {
       try {
-        const r = await syncAnrufe();
+        const r = await fetch('/api/anrufe', { method: 'POST' }).then((x) => x.json()) as { neu: NeuerAnruf[] };
         if (!aktiv) return;
         if (r.neu.length) {
           setHinweise((h) => [...h, ...r.neu].slice(-4));

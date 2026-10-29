@@ -41,15 +41,9 @@ export type ContactDetail = {
 export async function loadContactDetail(contactId: string, dealId?: string | null): Promise<ContactDetail | null> {
   const { supabase, orgId } = await ctx();
 
-  const { data: contact } = await supabase
-    .from('contacts')
-    .select('*, persons:contact_persons(*)')
-    .eq('id', contactId)
-    .maybeSingle();
-  if (!contact) return null;
-
-  const [{ data: deals }, { data: pipelines }, { data: stages }, { data: activities }, { data: notes }, { data: tasks }, { data: templates }, { data: team }, { data: layout }] =
+  const [{ data: contact }, { data: deals }, { data: pipelines }, { data: stages }, { data: activities }, { data: notes }, { data: tasks }, { data: templates }, { data: team }, { data: layout }] =
     await Promise.all([
+      supabase.from('contacts').select('*, persons:contact_persons(*)').eq('id', contactId).maybeSingle(),
       supabase.from('deals')
         .select('*, pipeline:pipelines(name), stage:pipeline_stages(name, color)')
         .eq('contact_id', contactId).order('created_at', { ascending: false }),
@@ -65,6 +59,7 @@ export async function loadContactDetail(contactId: string, dealId?: string | nul
       supabase.from('profiles').select('id, full_name, email').eq('org_id', orgId).eq('active', true),
       supabase.from('column_layouts').select('columns').eq('view_key', 'deal_panel').maybeSingle(),
     ]);
+  if (!contact) return null;
 
   const c = contact as ContactWithPersons;
   c.persons = [...(c.persons ?? [])].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.position - b.position);

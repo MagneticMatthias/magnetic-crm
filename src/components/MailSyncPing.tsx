@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { pingMailSync } from '@/app/actions/mail';
 
 const INTERVALL_MS = 5 * 60 * 1000;
 
@@ -18,7 +17,7 @@ export default function MailSyncPing({ enabled }: { enabled: boolean }) {
     let aktiv = true;
     const lauf = async () => {
       try {
-        const r = await pingMailSync();
+        const r = await fetch('/api/mailsync', { method: 'POST' }).then((x) => x.json()) as { imported: number };
         if (aktiv && r.imported > 0) router.refresh();
       } catch { /* still */ }
     };

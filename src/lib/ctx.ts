@@ -1,16 +1,12 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
-import { createClient } from './supabase/server';
 import type { Profile } from './types';
-import { ensureProfile } from './profile';
+import { sitzung } from './sitzung';
 
 /** Supabase-Client + Profil des eingeloggten Nutzers. Fuer Server Actions und Loader. */
 export async function ctx() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await sitzung();
   if (!user) redirect('/login');
-
-  const profile = await ensureProfile(supabase, user);
   if (!profile?.org_id) redirect('/onboarding');
 
   return { supabase, profile: profile as Profile, orgId: profile.org_id as string };
