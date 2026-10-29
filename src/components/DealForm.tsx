@@ -21,7 +21,7 @@ export type DealFormValues = {
 };
 
 export default function DealForm({
-  action, stages, contacts, team, values, submitLabel = 'Speichern', onDone,
+  action, stages, contacts, team, values, submitLabel = 'Speichern', onDone, betragPflicht,
 }: {
   action: (fd: FormData) => Promise<void>;
   stages: Stage[];
@@ -30,6 +30,8 @@ export default function DealForm({
   values?: DealFormValues;
   submitLabel?: string;
   onDone?: () => void;
+  /** Faeden: Betrag (netto) muss angegeben werden, eine Schaetzung reicht */
+  betragPflicht?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -51,9 +53,13 @@ export default function DealForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label" htmlFor="value">Wert (€)</label>
-          <input id="value" name="value" className="input" inputMode="decimal"
-                 defaultValue={values?.value ?? ''} placeholder="5000" />
+          <label className="label" htmlFor="value">
+            {betragPflicht ? <>Betrag netto (€) <span className="text-lose">*</span></> : 'Wert (€)'}
+          </label>
+          <input id="value" name="value" className="input" inputMode="decimal" required={betragPflicht}
+                 pattern={betragPflicht ? '[0-9.,]*[1-9][0-9.,]*' : undefined}
+                 title={betragPflicht ? 'Betrag in Euro, eine Schätzung reicht' : undefined}
+                 defaultValue={values?.value ?? ''} placeholder={betragPflicht ? 'Schätzung reicht' : '5000'} />
         </div>
         <div>
           <label className="label" htmlFor="stage_id">Phase</label>

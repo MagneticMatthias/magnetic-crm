@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { QUELLEN, PRODUKTE, ANLAESSE } from '@/lib/dealfelder';
+import { istFaeden, istKaltakquise } from '@/lib/faeden';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
   ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
@@ -9,7 +10,7 @@ import {
 import {
   loadContactDetail, updateContactFields, addPerson, updatePerson, deletePerson,
   setPrimaryPerson, setDealStage, createDealForContact, createNote, togglePinNote,
-  deleteNote, deleteContactRecord, updateDealFields, updateDealCustom, type ContactDetail,
+  deleteNote, deleteContactRecord, updateDealFields, updateDealCustom, dealZuFaden, type ContactDetail,
 } from '@/app/actions/records';
 import { PANEL_CARDS, DEFAULT_PANEL_LAYOUT, SETTER_FIELDS, type PanelCardKey } from '@/lib/panel-cards';
 import { Badge } from '@/components/Badge';
@@ -50,17 +51,20 @@ function NeuerDealForm({
   firma: string | null;
   pipelines: { id: string; name: string }[];
   stagesFor: (pipelineId: string) => { id: string; name: string; is_won: boolean; is_lost: boolean }[];
-  onSave: (stageId: string, felder: { quelle: string; produkt: string; anlass: string | null; title: string | null }) => void;
+  onSave: (stageId: string, felder: { quelle: string; produkt: string; anlass: string | null; title: string | null; betrag: string | null }) => void;
   onCancel: () => void;
 }) {
   const [stageId, setStageId] = useState('');
+  const [betrag, setBetrag] = useState('');
+  const faedenId = pipelines.find((p) => istFaeden(p.name))?.id;
+  const brauchtBetrag = !!faedenId && stagesFor(faedenId).some((s) => s.id === stageId);
   const [quelle, setQuelle] = useState('');
   const [produkt, setProdukt] = useState('');
   const [anlass, setAnlass] = useState('');
   const [title, setTitle] = useState('');
   return (
     <form className="mb-4 space-y-3 rounded-lg border border-line bg-surface-2/50 p-3"
-          onSubmit={(e) => { e.preventDefault(); onSave(stageId, { quelle, produkt, anlass: anlass || null, title: title || null }); }}>
+          onSubmit={(e) => { e.preventDefault(); onSave(stageId, { quelle, produkt, anlass: anlass || null, title: title || null, betrag: betrag || null }); }}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label">Phase<span className="text-lose"> *</span></label>
@@ -93,6 +97,13 @@ function NeuerDealForm({
             {PRODUKTE.map((q) => <option key={q} value={q}>{q}</option>)}
           </select>
         </div>
+        {brauchtBetrag && (
+          <div className="sm:col-span-2">
+            <label className="label">Betrag netto (€)<span className="text-lose"> *</span></label>
+            <input className="input" required inputMode="decimal" value={betrag} onChange={(e) => setBetrag(e.target.value)}
+                   pattern="[0-9.,]*[1-9][0-9.,]*" placeholder="Schätzung reicht" />
+          </div>
+        )}
         <div className="sm:col-span-2">
           <label className="label">Anlass</label>
           <input className="input" list="anlaesse-neu" value={anlass} onChange={(e) => setAnlass(e.target.value)}
@@ -377,6 +388,7 @@ export default function DetailPanel({
 
   const [handover, setHandover] = useState<string | null>(null);
   const [neuerDeal, setNeuerDeal] = useState(false);
+  const [zuFaden, setZuFaden] = useState<string | null>(null);
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => { await fn(); await reload(); });
 
@@ -587,6 +599,30 @@ export default function DetailPanel({
                         <SelectField label="Deal-Phase" required value={mainDeal.stage_id}
                           options={stagesFor(mainDeal.pipeline_id).map((s) => ({ value: s.id, label: s.name }))}
                           onSave={(stageId) => run(() => setDealStage(mainDeal.id, stageId))} />
+                        {istKaltakquise(data?.pipelines.find((p) => p.id === mainDeal.pipeline_id)?.name) && (
+                          <div className="sm:col-span-2">
+                            {zuFaden === null ? (
+                              <button type="button" className="btn-ghost !py-1.5 text-[13px]" onClick={() => setZuFaden('')}>
+                                Zu Faden machen
+                              </button>
+                            ) : (
+                              <form className="flex flex-wrap items-end gap-2"
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      run(async () => { await dealZuFaden(mainDeal.id, zuFaden); setZuFaden(null); });
+                                    }}>
+                                <div>
+                                  <label className="label">Betrag netto (€)<span className="text-lose"> *</span></label>
+                                  <input className="input !w-40" required autoFocus inputMode="decimal" value={zuFaden}
+                                         pattern="[0-9.,]*[1-9][0-9.,]*" placeholder="Schätzung reicht"
+                                         onChange={(e) => setZuFaden(e.target.value)} />
+                                </div>
+                                <button className="btn-primary !py-2 text-[13px]">In Fäden verschieben</button>
+                                <button type="button" className="btn-ghost !py-2 text-[13px]" onClick={() => setZuFaden(null)}>Abbrechen</button>
+                              </form>
+                            )}
+                          </div>
+                        )}
                         <div className="sm:col-span-2">
                           <span className="label">Nächste Wiedervorlage</span>
                           {(() => {

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { nachPhasenwechsel } from '@/lib/phasenwechsel';
 import { ctx, str } from '@/lib/ctx';
 
 /**
@@ -42,6 +43,7 @@ export async function logDialerCall(input: {
       await supabase.from('deals')
         .update({ stage_id: input.nextStageId, pipeline_id: stage.pipeline_id })
         .eq('id', input.dealId);
+      await nachPhasenwechsel(supabase, input.dealId, input.nextStageId);
     }
   }
 

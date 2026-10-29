@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { wiedervorlagenZuordnen, type Wiedervorlage } from '@/lib/wiedervorlage';
+import { nachPhasenwechsel, zuFaden } from '@/lib/phasenwechsel';
+import { istFaeden } from '@/lib/faeden';
 import { ctx, str } from '@/lib/ctx';
 import { smtpConfigured } from '@/lib/mailer';
 import type {
@@ -216,23 +218,37 @@ export async function setDealStage(dealId: string, stageId: string) {
   const { error } = await supabase.from('deals')
     .update({ stage_id: stageId, pipeline_id: stage.pipeline_id }).eq('id', dealId);
   if (error) throw new Error(error.message);
+  await nachPhasenwechsel(supabase, dealId, stageId);
+  refresh();
+}
+
+/** Knopf „Zu Faden machen“: Deal wandert nach Faeden, Betrag (netto) ist Pflicht. */
+export async function dealZuFaden(dealId: string, betragText: string) {
+  const betrag = Number(String(betragText).replace(/\./g, '').replace(',', '.'));
+  if (!betrag || betrag <= 0) throw new Error('Bitte einen Betrag angeben, eine Schätzung reicht.');
+  const { supabase, orgId } = await ctx();
+  await zuFaden(supabase, dealId, orgId, betrag);
   refresh();
 }
 
 export async function createDealForContact(
   contactId: string, stageId: string,
-  felder: { quelle: string; produkt: string; anlass?: string | null; title?: string | null },
+  felder: { quelle: string; produkt: string; anlass?: string | null; title?: string | null; betrag?: string | null },
 ) {
   if (!felder.quelle?.trim() || !felder.produkt?.trim()) throw new Error('Quelle und Produkt sind Pflicht.');
   const { supabase, orgId, profile } = await ctx();
   const [{ data: stage }, { data: contact }] = await Promise.all([
-    supabase.from('pipeline_stages').select('pipeline_id').eq('id', stageId).single(),
+    supabase.from('pipeline_stages').select('pipeline_id, pipeline:pipelines(name)').eq('id', stageId).single(),
     supabase.from('contacts').select('company, lead_source').eq('id', contactId).single(),
   ]);
   if (!stage) throw new Error('Phase nicht gefunden');
+  const betrag = Number(String(felder.betrag ?? '').replace(/\./g, '').replace(',', '.')) || 0;
+  const pipeName = (stage as unknown as { pipeline: { name: string } | null }).pipeline?.name;
+  if (istFaeden(pipeName) && betrag <= 0) throw new Error('Für einen Faden ist der Betrag Pflicht, eine Schätzung reicht.');
 
   const { error } = await supabase.from('deals').insert({
     org_id: orgId,
+    value: betrag,
     contact_id: contactId,
     pipeline_id: stage.pipeline_id,
     stage_id: stageId,

@@ -9,7 +9,7 @@ import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy 
 import { CSS } from '@dnd-kit/utilities';
 import RecordTable from '@/components/table/RecordTable';
 import { StagesProvider } from '@/components/table/StagesContext';
-import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS } from '@/components/table/columns';
+import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS, FAEDEN_DEFAULT_COLUMNS } from '@/components/table/columns';
 import DetailPanel from '@/components/DetailPanel';
 import PanelConfigurator from '@/components/PanelConfigurator';
 import { Modal } from '@/components/ui';
@@ -47,7 +47,7 @@ function SortableTab({
 }
 
 export default function PipelineView({
-  pipeline, stages, stageId, counts, rows, filter, savedFilters, contacts, team, initialOpen,
+  pipeline, stages, stageId, counts, rows, filter, savedFilters, contacts, team, initialOpen, faeden,
 }: {
   pipeline: Pipeline;
   stages: Stage[];
@@ -59,6 +59,8 @@ export default function PipelineView({
   contacts: ContactWithPersons[];
   team: Profile[];
   initialOpen?: string | null;
+  /** Pipeline Faeden: Deal-Name und Betrag in der Tabelle, Betrag beim Anlegen Pflicht */
+  faeden?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<{ contactId: string; dealId: string } | null>(null);
@@ -119,8 +121,8 @@ export default function PipelineView({
       <RecordTable
         rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
         columns={DEAL_COLUMNS}
-        defaultColumns={DEAL_DEFAULT_COLUMNS}
-        storageKey={`deals2:${pipeline.id}`}
+        defaultColumns={faeden ? FAEDEN_DEFAULT_COLUMNS : DEAL_DEFAULT_COLUMNS}
+        storageKey={faeden ? `faeden1:${pipeline.id}` : `deals2:${pipeline.id}`}
         fields={DEAL_FIELDS}
         filter={filter}
         savedFilters={savedFilters}
@@ -150,6 +152,7 @@ export default function PipelineView({
           contacts={contacts}
           team={team}
           values={{ stage_id: stageId ?? stages[0]?.id }}
+          betragPflicht={faeden}
           submitLabel="Deal anlegen"
           onDone={() => setCreating(false)}
         />

@@ -396,7 +396,8 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'next_step', label: 'Nächster Schritt', width: 220, render: (r) => <Muted>{r.next_step}</Muted>, sortValue: (r) => r.next_step ?? '' },
   { key: 'expected_close_date', label: 'Fällig / Abschluss', width: 130, render: (r) => <Muted>{r.expected_close_date ? dateTime(r.expected_close_date).slice(0, 10) : null}</Muted>, sortValue: (r) => r.expected_close_date ?? '' },
   { key: 'value', label: 'Wert', width: 110, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
-  { key: 'title', label: 'Deal', width: 240, render: (r) => <Muted>{r.title}</Muted>, sortValue: (r) => r.title },
+  { key: 'title', label: 'Deal', width: 240, render: (r) => <span className="truncate font-medium">{r.title}</span>, sortValue: (r) => r.title },
+  { key: 'deal.betrag', label: 'Betrag (netto)', width: 130, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
   { key: 'deal.quelle', label: 'Quelle', width: 170, render: (r) => <Muted>{r.custom?.quelle}</Muted>, sortValue: (r) => r.custom?.quelle ?? '' },
   { key: 'deal.produkt', label: 'Produkt', width: 180, render: (r) => <Muted>{r.custom?.produkt}</Muted>, sortValue: (r) => r.custom?.produkt ?? '' },
   { key: 'deal.anlass', label: 'Anlass', width: 170, render: (r) => <Muted>{r.custom?.anlass}</Muted>, sortValue: (r) => r.custom?.anlass ?? '' },
@@ -415,6 +416,11 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'custom.messe', label: 'Liste / Messe', width: 150, render: (r) => <Muted>{r.contact?.custom?.messe}</Muted>, sortValue: (r) => r.contact?.custom?.messe ?? '' },
   { key: 'custom.signalstaerke', label: 'Signal', width: 80, render: (r) => <Muted>{r.contact?.custom?.signalstaerke}</Muted>, sortValue: (r) => r.contact?.custom?.signalstaerke ?? 'Z' },
   { key: 'custom.signal', label: 'Signal-Hinweis', width: 320, render: (r) => <Muted>{r.contact?.custom?.signal}</Muted>, sortValue: (r) => r.contact?.custom?.signal ?? '' },
+];
+
+/** Faeden: ein Deal = ein Projekt, deshalb steht der Deal-Name vorne */
+export const FAEDEN_DEFAULT_COLUMNS = [
+  'title', 'company', 'stage', 'deal.betrag', 'deal.produkt', 'last_contacted_at', 'persons', 'phone',
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [

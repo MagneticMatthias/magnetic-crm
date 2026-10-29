@@ -1,6 +1,8 @@
 import { ctx } from '@/lib/ctx';
 import { nurPassendeFilter } from '@/lib/listenfilter';
 import { Empty } from '@/components/ui';
+import { istFaeden, ERLEDIGT_PHASEN } from '@/lib/faeden';
+import { eur } from '@/lib/format';
 import PipelineView from '@/components/PipelineView';
 import { applyFilter, DEAL_FIELDS, parseFilterParam } from '@/lib/filters';
 import type {
@@ -9,8 +11,8 @@ import type {
 
 export default async function PipelinesPage({
   searchParams,
-}: { searchParams: Promise<{ p?: string; s?: string; q?: string; filter?: string; open?: string }> }) {
-  const { p, s, q, filter, open } = await searchParams;
+}: { searchParams: Promise<{ p?: string; s?: string; q?: string; filter?: string; open?: string; erledigt?: string }> }) {
+  const { p, s, q, filter, open, erledigt } = await searchParams;
   const { supabase, orgId } = await ctx();
 
   const { data: pipelines } = await supabase
@@ -44,7 +46,8 @@ export default async function PipelinesPage({
   let rows = (deals ?? []) as DealWithContact[];
 
   // Faeden: offene Deals ohne offene Wiedervorlage rot markieren
-  if (/^f(ä|ae)den$/i.test(pipeline.name.trim())) {
+  const faeden = istFaeden(pipeline.name);
+  if (faeden) {
     const { data: offen } = await supabase.from('tasks').select('deal_id, contact_id')
       .eq('org_id', orgId).eq('done', false).not('due_at', 'is', null).limit(5000);
     const mitDatumDeal = new Set((offen ?? []).map((t) => t.deal_id).filter(Boolean));
@@ -70,6 +73,12 @@ export default async function PipelinesPage({
   const def = parseFilterParam(filter);
   rows = applyFilter(rows, def, DEAL_FIELDS);
 
+  // Faeden: Geliefert und Verloren nur auf Wunsch zeigen
+  const stageListAlle = (stages ?? []) as Stage[];
+  const erledigtIds = new Set(stageListAlle.filter((x) => ERLEDIGT_PHASEN.includes(x.name.trim().toLowerCase())).map((x) => x.id));
+  const zeigeErledigte = !faeden || erledigt === '1' || (s ? erledigtIds.has(s) : false);
+  if (!zeigeErledigte) rows = rows.filter((d) => !erledigtIds.has(d.stage_id));
+
   const counts: Record<string, number> = {};
   rows.forEach((d) => { counts[d.stage_id] = (counts[d.stage_id] ?? 0) + 1; });
 
@@ -81,6 +90,17 @@ export default async function PipelinesPage({
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:mb-5">
         <h1 className="text-xl font-semibold sm:text-2xl">{pipeline.name}</h1>
         <span className="text-sm text-muted">{rows.length} Datensätze</span>
+        {faeden && (
+          <>
+            <span className="text-sm font-medium tabular-nums">
+              Summe: {eur((stageId ? rows.filter((d) => d.stage_id === stageId) : rows).reduce((a, d) => a + Number(d.value || 0), 0))} netto
+            </span>
+            <a href={`/pipelines?p=${pipeline.id}${zeigeErledigte && erledigt === '1' ? '' : '&erledigt=1'}`}
+               className="text-sm text-brand hover:underline">
+              {zeigeErledigte && erledigt === '1' ? 'Erledigte ausblenden' : 'Erledigte anzeigen'}
+            </a>
+          </>
+        )}
       </div>
 
       <PipelineView
@@ -95,6 +115,7 @@ export default async function PipelinesPage({
         contacts={(contacts ?? []) as ContactWithPersons[]}
         team={(team ?? []) as Profile[]}
         initialOpen={open ?? null}
+        faeden={faeden}
       />
     </div>
   );

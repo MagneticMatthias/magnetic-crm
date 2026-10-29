@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { istFaeden } from '@/lib/faeden';
+import { nachPhasenwechsel } from '@/lib/phasenwechsel';
 import { redirect } from 'next/navigation';
 import { ctx, str, numOrZero } from '@/lib/ctx';
 
@@ -21,8 +23,11 @@ export async function createDeal(formData: FormData) {
   if (!str(formData, 'quelle') || !str(formData, 'produkt')) throw new Error('Quelle und Produkt sind Pflicht.');
 
   const { data: stage } = await supabase
-    .from('pipeline_stages').select('pipeline_id').eq('id', stageId).single();
+    .from('pipeline_stages').select('pipeline_id, pipeline:pipelines(name)').eq('id', stageId).single();
   if (!stage) throw new Error('Phase nicht gefunden');
+  if (istFaeden((stage as unknown as { pipeline: { name: string } | null }).pipeline?.name) && !(numOrZero(formData, 'value') > 0)) {
+    throw new Error('Für einen Faden ist der Betrag Pflicht, eine Schätzung reicht.');
+  }
 
   const { count } = await supabase
     .from('deals').select('id', { count: 'exact', head: true }).eq('stage_id', stageId);
@@ -94,6 +99,7 @@ export async function moveDeal(dealId: string, stageId: string, position: number
     .update({ stage_id: stageId, pipeline_id: stage.pipeline_id, position })
     .eq('id', dealId);
   if (error) throw new Error(error.message);
+  await nachPhasenwechsel(supabase, dealId, stageId);
 
   refreshAll();
 }
@@ -159,6 +165,7 @@ export async function phaseNachziehen(supabase: Db, dealId: string, namen: strin
   if (jetzt && jetzt.position >= ziel.position) return;
 
   await supabase.from('deals').update({ stage_id: ziel.id }).eq('id', dealId);
+  await nachPhasenwechsel(supabase, dealId, ziel.id);
 }
 
 /**
@@ -236,6 +243,7 @@ export async function logActivity(formData: FormData) {
     if (stage) {
       await supabase.from('deals')
         .update({ stage_id: nextStage, pipeline_id: stage.pipeline_id }).eq('id', dealId);
+      await nachPhasenwechsel(supabase, dealId, nextStage);
     }
   } else if (dealId) {
     await phaseNachziehen(supabase, dealId, phaseAusAktivitaet(formData, type));
@@ -294,6 +302,7 @@ export async function updateActivity(formData: FormData) {
     if (stage) {
       await supabase.from('deals')
         .update({ stage_id: nextStage, pipeline_id: stage.pipeline_id }).eq('id', a.deal_id);
+      await nachPhasenwechsel(supabase, a.deal_id, nextStage);
     }
   } else if (a?.deal_id && type === 'call') {
     // Ergebnis nachgetragen (z. B. bei einem Anruf aus der Fritzbox): Phase zieht mit
