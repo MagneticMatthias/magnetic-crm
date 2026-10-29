@@ -6,7 +6,7 @@ import Timeline from '@/components/Timeline';
 import TaskList from '@/components/TaskList';
 import { eur, pct, contactName } from '@/lib/format';
 import { REACHED_OUTCOMES } from '@/lib/labels';
-import type { Activity, Deal, Stage, Task } from '@/lib/types';
+import type { Activity, Deal, Stage } from '@/lib/types';
 import { nowMs, nowDate } from '@/lib/clock';
 
 export default async function DashboardPage() {
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     supabase.from('activities').select('*, user:profiles(full_name, email)')
       .eq('org_id', orgId).gte('occurred_at', last14.toISOString())
       .order('occurred_at', { ascending: false }).limit(400),
-    supabase.from('tasks').select('*, deal:deals(id, title)')
+    supabase.from('tasks').select('*, deal:deals(id, title), contact:contacts(id, company, persons:contact_persons(first_name, last_name, is_primary))')
       .eq('org_id', orgId).eq('assignee_id', profile.id).eq('done', false)
       .order('due_at', { nullsFirst: false }).limit(8),
   ]);
@@ -99,17 +99,21 @@ export default async function DashboardPage() {
                 hint={`${calls.length} in 14 Tagen`} tone="warn" />
         </div>
 
+        {/* Aufgaben zuerst: das ist der Arbeitsvorrat fuer heute */}
         <div className="grid gap-4 lg:grid-cols-2">
+          <div className="card p-4">
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold">Deine nächsten Aufgaben</h2>
+              <Link href="/aufgaben" className="text-xs text-brand hover:underline">Alle Aufgaben</Link>
+            </div>
+            <TaskList tasks={(tasks ?? []) as Parameters<typeof TaskList>[0]['tasks']} showContext groupBy="zeit" oeffnetKontakt />
+          </div>
+
           <div className="card p-4">
             <h2 className="mb-4 text-sm font-semibold">
               Funnel – {firstPipeline?.name ?? 'Pipeline'}
             </h2>
             {funnel.length ? <FunnelBars data={funnel} /> : <p className="text-sm text-muted">Keine Phasen.</p>}
-          </div>
-
-          <div className="card p-4">
-            <h2 className="mb-3 text-sm font-semibold">Calls der letzten 14 Tage</h2>
-            <CallsChart data={daily} />
           </div>
         </div>
 
@@ -135,8 +139,8 @@ export default async function DashboardPage() {
           </div>
 
           <div className="card p-4">
-            <h2 className="mb-3 text-sm font-semibold">Deine nächsten Aufgaben</h2>
-            <TaskList tasks={(tasks ?? []) as (Task & { deal: { id: string; title: string } | null })[]} showContext />
+            <h2 className="mb-3 text-sm font-semibold">Calls der letzten 14 Tage</h2>
+            <CallsChart data={daily} />
           </div>
         </div>
 

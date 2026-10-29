@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trash2, Building2, Pencil, X } from 'lucide-react';
 import { toggleTask, deleteTask, updateTask } from '@/app/actions/crm';
 import { dateTime, personName, primaryPerson } from '@/lib/format';
@@ -33,12 +34,17 @@ const toLocalInput = (iso: string | null | undefined) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-function TaskRow({ t, now, showContext, showContact }: {
+function TaskRow({ t, now, showContext, showContact, oeffnetKontakt }: {
   t: Row; now: number; showContext?: boolean;
+  /** Klick auf die Zeile oeffnet den Kontakt (Dashboard); bearbeitet wird dann ueber den Stift. */
+  oeffnetKontakt?: boolean;
   /** Firma in der Zeile nennen (Terminansicht); in der Firmenansicht steht sie in der Ueberschrift. */
   showContact?: boolean;
 }) {
   const [edit, setEdit] = useState(false);
+  const router = useRouter();
+  const zumKontakt = oeffnetKontakt && t.contact ? `/kontakte?open=${t.contact.id}` : null;
+  const klick = () => (zumKontakt ? router.push(zumKontakt) : setEdit(true));
   const overdue = !t.done && t.due_at && new Date(t.due_at).getTime() < now;
 
   if (edit) {
@@ -85,10 +91,10 @@ function TaskRow({ t, now, showContext, showContact }: {
 
       {/* Ganze Zeile oeffnet die Bearbeitung, nicht nur der Stift. Kein
           <button>, weil der Firmenlink darin ein eigenes Ziel hat. */}
-      <div role="button" tabIndex={0} onClick={() => setEdit(true)}
-           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEdit(true); } }}
+      <div role="button" tabIndex={0} onClick={klick}
+           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); klick(); } }}
            className="group min-w-0 flex-1 cursor-pointer rounded-md text-left transition hover:bg-surface-2/60"
-           title="Aufgabe bearbeiten">
+           title={zumKontakt ? 'Kontakt öffnen' : 'Aufgabe bearbeiten'}>
         <p className={`text-sm ${t.done ? 'text-muted line-through' : 'font-medium'}`}>{t.title}</p>
         {t.description && <p className="mt-0.5 text-xs text-muted">{t.description}</p>}
         <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -105,9 +111,16 @@ function TaskRow({ t, now, showContext, showContact }: {
             </Link>
           )}
           {showContext && !t.contact && t.deal && <span className="truncate">· {t.deal.title}</span>}
-          <Pencil size={11} className="opacity-0 transition group-hover:opacity-100" />
+          {!zumKontakt && <Pencil size={11} className="opacity-0 transition group-hover:opacity-100" />}
         </span>
       </div>
+
+      {zumKontakt && (
+        <button type="button" onClick={() => setEdit(true)} aria-label="Aufgabe bearbeiten" title="Aufgabe bearbeiten"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink">
+          <Pencil size={15} />
+        </button>
+      )}
 
       <form action={deleteTask} className="shrink-0">
         <input type="hidden" name="id" value={t.id} />
@@ -137,8 +150,8 @@ function zeitBlock(t: Row, heuteEnde: number): string {
 const BLOCK_REIHE = ['Überfällig', 'Heute', 'Diese Woche', 'Später', 'Ohne Frist', 'Erledigt'];
 
 export default function TaskList({
-  tasks, showContext, groupBy = 'kontakt',
-}: { tasks: Row[]; showContext?: boolean; groupBy?: 'kontakt' | 'zeit' }) {
+  tasks, showContext, groupBy = 'kontakt', oeffnetKontakt,
+}: { tasks: Row[]; showContext?: boolean; groupBy?: 'kontakt' | 'zeit'; oeffnetKontakt?: boolean }) {
   const now = nowMs();
   if (!tasks.length) return <p className="px-1 py-4 text-sm text-muted">Keine offenen Aufgaben.</p>;
 
@@ -175,7 +188,7 @@ export default function TaskList({
               </span>
             </div>
             <ul className="space-y-2">
-              {bloecke.get(b)!.map((t) => <TaskRow key={t.id} t={t} now={now} showContext showContact />)}
+              {bloecke.get(b)!.map((t) => <TaskRow key={t.id} t={t} now={now} showContext showContact oeffnetKontakt={oeffnetKontakt} />)}
             </ul>
           </div>
         ))}
