@@ -8,8 +8,8 @@ import { daysAgoIso, nowDate } from '@/lib/clock';
 
 export default async function ReportsPage({
   searchParams,
-}: { searchParams: Promise<{ tage?: string; p?: string }> }) {
-  const { tage, p: pipeParam } = await searchParams;
+}: { searchParams: Promise<{ tage?: string; p?: string; anlass?: string; von?: string; bis?: string }> }) {
+  const { tage, p: pipeParam, anlass: anlassParam, von, bis } = await searchParams;
   const days = Number(tage ?? 90);
   const since = daysAgoIso(days);
 
@@ -111,18 +111,47 @@ export default async function ReportsPage({
   const phasenSpalten = selected
     ? stageList.filter((st) => st.pipeline_id === selected.id).map((st) => ({ ids: [st.id], name: st.name }))
     : [...new Set(stageList.map((st) => st.name))].map((n) => ({ ids: stageList.filter((st) => st.name === n).map((st) => st.id), name: n }));
-  const kreuz = (feld: 'quelle' | 'produkt') => {
-    const werte = [...new Set(allDeals.map((d) => d.custom?.[feld] || '(leer)'))].sort((a, b) =>
+  // Eigene Datengrundlage fuer die Kreuztabellen: alle Deals der Auswahl,
+  // gefiltert nach Anlass und Datum der ersten Aktivitaet
+  const kreuzBasis: { id: string; stage_id: string; pipeline_id: string; custom: Record<string, string | null> | null }[] = [];
+  for (let ab = 0; ; ab += 1000) {
+    let q = supabase.from('deals').select('id, stage_id, pipeline_id, custom').eq('org_id', orgId);
+    if (selected) q = q.eq('pipeline_id', selected.id);
+    const { data } = await q.range(ab, ab + 999);
+    kreuzBasis.push(...((data ?? []) as typeof kreuzBasis));
+    if (!data || data.length < 1000) break;
+  }
+  const anlaesse = [...new Set(kreuzBasis.map((d) => d.custom?.anlass).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'de'));
+  let kreuzDeals = anlassParam ? kreuzBasis.filter((d) => (d.custom?.anlass ?? '') === anlassParam) : kreuzBasis;
+  if (von || bis) {
+    const erste = new Map<string, string>();
+    for (let ab = 0; ; ab += 1000) {
+      const { data } = await supabase.from('activities').select('deal_id, occurred_at').eq('org_id', orgId)
+        .not('deal_id', 'is', null).order('occurred_at').range(ab, ab + 999);
+      for (const a of data ?? []) if (!erste.has(a.deal_id as string)) erste.set(a.deal_id as string, a.occurred_at as string);
+      if (!data || data.length < 1000) break;
+    }
+    const vonMs = von ? new Date(`${von}T00:00`).getTime() : -Infinity;
+    const bisMs = bis ? new Date(`${bis}T23:59:59`).getTime() : Infinity;
+    kreuzDeals = kreuzDeals.filter((d) => {
+      const e = erste.get(d.id);
+      if (!e) return false;
+      const t = new Date(e).getTime();
+      return t >= vonMs && t <= bisMs;
+    });
+  }
+  const kreuz = (feld: 'quelle' | 'anlass') => {
+    const werte = [...new Set(kreuzDeals.map((d) => d.custom?.[feld] || '(leer)'))].sort((a, b) =>
       a === '(leer)' ? 1 : b === '(leer)' ? -1 : a.localeCompare(b, 'de'));
     return werte.map((w) => ({
       wert: w,
-      je: phasenSpalten.map((ph) => allDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w && ph.ids.includes(d.stage_id)).length),
-      gesamt: allDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w).length,
+      je: phasenSpalten.map((ph) => kreuzDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w && ph.ids.includes(d.stage_id)).length),
+      gesamt: kreuzDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w).length,
     }));
   };
   const kreuzTabellen = [
     { titel: 'Quelle × Phase', zeilen: kreuz('quelle') },
-    { titel: 'Produkt × Phase', zeilen: kreuz('produkt') },
+    { titel: 'Anlass × Phase', zeilen: kreuz('anlass') },
   ];
 
   return (
@@ -213,6 +242,31 @@ export default async function ReportsPage({
             </tbody>
           </table>
         </div>
+
+        <form className="card flex flex-wrap items-end gap-3 p-4" action="/sales-controlling">
+          <input type="hidden" name="tage" value={days} />
+          <input type="hidden" name="p" value={selected ? selected.id : 'alle'} />
+          <div>
+            <label className="label" htmlFor="kr-anlass">Anlass</label>
+            <select id="kr-anlass" name="anlass" className="input" defaultValue={anlassParam ?? ''}>
+              <option value="">alle</option>
+              {anlaesse.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="kr-von">Erste Aktivität ab</label>
+            <input id="kr-von" name="von" type="date" className="input" defaultValue={von ?? ''} />
+          </div>
+          <div>
+            <label className="label" htmlFor="kr-bis">bis</label>
+            <input id="kr-bis" name="bis" type="date" className="input" defaultValue={bis ?? ''} />
+          </div>
+          <button className="btn-primary">Anwenden</button>
+          {(anlassParam || von || bis) && (
+            <a className="btn-ghost" href={`/sales-controlling?tage=${days}&p=${selected ? selected.id : 'alle'}`}>Zurücksetzen</a>
+          )}
+          <span className="text-xs text-muted">{kreuzDeals.length} Deals in den Tabellen</span>
+        </form>
 
         {kreuzTabellen.map((t) => (
           <div key={t.titel} className="card overflow-x-auto">
