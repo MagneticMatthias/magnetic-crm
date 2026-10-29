@@ -36,6 +36,17 @@ export default function ActivityComposer({
   const [anrufErgebnis, setAnrufErgebnis] = useState('erreicht');
   const nichtJetzt = (nachricht && nachrichtErgebnis === NICHT_JETZT) || (type === 'call' && anrufErgebnis === NICHT_JETZT);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string; fd?: FormData } | null>(null);
+  // Sofort leeren und im Hintergrund speichern - das Formular wartet nicht auf den Server
+  const speichern = (fd: FormData) => {
+    setKey((k) => k + 1);
+    setBusy(true);
+    setStatus({ ok: true, text: 'Wird gespeichert …' });
+    action(fd)
+      .then(() => setStatus({ ok: true, text: 'Gespeichert' }))
+      .catch((e) => setStatus({ ok: false, text: e instanceof Error ? e.message : 'Speichern fehlgeschlagen', fd }))
+      .finally(() => setBusy(false));
+  };
   const [key, setKey] = useState(0);
 
   return (
@@ -59,10 +70,7 @@ export default function ActivityComposer({
 
       <form
         key={key}
-        action={async (fd) => {
-          setBusy(true);
-          try { await action(fd); setKey((k) => k + 1); } finally { setBusy(false); }
-        }}
+        action={(fd) => speichern(fd)}
         className="space-y-3"
       >
         <input type="hidden" name="type" value={type} />
@@ -137,9 +145,17 @@ export default function ActivityComposer({
                     placeholder="Was wurde besprochen? Einwände, nächste Schritte …" />
         </div>
 
-        <button className="btn-primary" disabled={busy}>
-          {busy ? 'Speichern …' : 'Aktivität festhalten'}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="btn-primary">Aktivität festhalten</button>
+          {status && (
+            <span className={`text-sm ${status.ok ? 'text-muted' : 'text-lose'}`}>
+              {status.ok && !busy ? '✓ ' : ''}{status.text}
+              {!status.ok && status.fd && (
+                <button type="button" className="ml-2 underline" onClick={() => speichern(status.fd!)}>Nochmal versuchen</button>
+              )}
+            </span>
+          )}
+        </div>
       </form>
     </div>
   );

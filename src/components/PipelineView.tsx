@@ -1,14 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, LayoutList } from 'lucide-react';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import RecordTable from '@/components/table/RecordTable';
-import { StagesProvider, PipelineArtProvider } from '@/components/table/StagesContext';
+import { StagesProvider, PipelineArtProvider, ZeilenPatchProvider, type ZeilenPatch } from '@/components/table/StagesContext';
 import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS, FAEDEN_DEFAULT_COLUMNS, KALT_DEFAULT_COLUMNS } from '@/components/table/columns';
 import { istKaltakquise } from '@/lib/faeden';
 import DetailPanel from '@/components/DetailPanel';
@@ -65,13 +65,35 @@ export default function PipelineView({
 }) {
   const router = useRouter();
   const kalt = istKaltakquise(pipeline.name);
+  // Aenderungen aus "Was ist passiert?" sofort zeigen; neue Daten vom Server ersetzen sie
+  const [patches, setPatches] = useState<{ basis: DealWithContact[]; je: Record<string, ZeilenPatch> }>({ basis: rows, je: {} });
+  const patchRow = useCallback((dealId: string, patch: ZeilenPatch | null) => setPatches((p) => {
+    const je = { ...(p.basis === rows ? p.je : {}) };
+    if (!patch) delete je[dealId];
+    else je[dealId] = { ...je[dealId], ...patch, custom: { ...(je[dealId]?.custom ?? {}), ...(patch.custom ?? {}) } };
+    return { basis: rows, je };
+  }), [rows]);
+  const sichtbar = useMemo(() => {
+    const je = patches.basis === rows ? patches.je : {};
+    return rows.map((d) => {
+      const p = je[d.id];
+      return p ? { ...d, ...p, custom: { ...(d.custom ?? {}), ...(p.custom ?? {}) } } as DealWithContact : d;
+    });
+  }, [rows, patches]);
   const [open, setOpen] = useState<{ contactId: string; dealId: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const [configuring, setConfiguring] = useState(false);
   const initialContact = initialOpen ?? null;
   useViewing(open?.dealId ?? null);
 
-  const tabHref = (id: string | null) => `/pipelines?p=${pipeline.id}${id ? `&s=${id}` : ''}`;
+  // Phasen-Reiter behalten Filter und Suche
+  const sp = useSearchParams();
+  const tabHref = (id: string | null) => {
+    const q = new URLSearchParams({ p: pipeline.id });
+    if (id) q.set('s', id);
+    for (const k of ['filter', 'q', 'erledigt']) { const v = sp.get(k); if (v) q.set(k, v); }
+    return `/pipelines?${q.toString()}`;
+  };
 
   // Reihenfolge der Reiter: sofort lokal, dann gespeichert. Ein Klick nach
   // einem Ziehen darf nicht navigieren, deshalb das Merkzeichen.
@@ -119,10 +141,11 @@ export default function PipelineView({
         </DndContext>
       </div>
 
+      <ZeilenPatchProvider value={patchRow}>
       <PipelineArtProvider value={faeden ? 'faeden' : kalt ? 'kalt' : null}>
       <StagesProvider value={stages}>
       <RecordTable
-        rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
+        rows={stageId ? sichtbar.filter((d) => d.stage_id === stageId) : sichtbar}
         columns={DEAL_COLUMNS}
         defaultColumns={faeden ? FAEDEN_DEFAULT_COLUMNS : kalt ? KALT_DEFAULT_COLUMNS : DEAL_DEFAULT_COLUMNS}
         storageKey={faeden ? `faeden2:${pipeline.id}` : kalt ? `kalt1:${pipeline.id}` : `deals2:${pipeline.id}`}
@@ -148,6 +171,7 @@ export default function PipelineView({
       />
       </StagesProvider>
       </PipelineArtProvider>
+      </ZeilenPatchProvider>
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Neuer Deal" wide>
         <DealForm

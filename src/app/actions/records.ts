@@ -230,12 +230,15 @@ export async function wasIstPassiert(dealId: string, eintrag: string): Promise<{
   if (!deal) throw new Error('Deal nicht gefunden');
   const regel = passiertRegel(eintrag, (deal.custom as Record<string, string | null> | null)?.quelle);
   if (!regel) throw new Error('Unbekannter Eintrag');
-  const { error } = await supabase.from('activities').insert({
-    org_id: orgId, deal_id: dealId, contact_id: deal.contact_id, user_id: profile.id,
-    type: regel.type, outcome: regel.outcome ?? null, subject: eintrag, occurred_at: new Date().toISOString(),
-  });
+  // Aktivitaet und Phase/Quelle gleichzeitig schreiben
+  const [{ error }] = await Promise.all([
+    supabase.from('activities').insert({
+      org_id: orgId, deal_id: dealId, contact_id: deal.contact_id, user_id: profile.id,
+      type: regel.type, outcome: regel.outcome ?? null, subject: eintrag, occurred_at: new Date().toISOString(),
+    }),
+    passiertAnwenden(supabase, dealId, regel),
+  ]);
   if (error) throw new Error(error.message);
-  await passiertAnwenden(supabase, dealId, regel);
   refresh();
   return { wiedervorlage: regel.wiedervorlage };
 }

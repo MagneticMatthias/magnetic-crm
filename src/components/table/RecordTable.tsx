@@ -136,6 +136,31 @@ export default function RecordTable<T extends { id: string }>({
     router.push(`${pathname}?${next.toString()}`);
   };
 
+  // Letzten Filter je Tabelle merken: wer weg- und zurueckgeht, hat ihn wieder
+  const filterGeladen = useRef(false);
+  const filterParam = params.get('filter');
+  useEffect(() => {
+    const key = `filter:${storageKey}`;
+    if (!filterGeladen.current) {
+      filterGeladen.current = true;
+      if (!filterParam) {
+        try {
+          const gemerkt = localStorage.getItem(key);
+          if (gemerkt) {
+            const next = new URLSearchParams(params.toString());
+            next.set('filter', gemerkt);
+            router.replace(`${pathname}?${next.toString()}`);
+          }
+        } catch { /* localStorage nicht verfuegbar */ }
+        return;
+      }
+    }
+    try {
+      if (filterParam) localStorage.setItem(key, filterParam); else localStorage.removeItem(key);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterParam, storageKey]);
+
   useEffect(() => {
     const t = setTimeout(() => { if ((params.get('q') ?? '') !== query) setParam('q', query || null); }, 300);
     return () => clearTimeout(t);

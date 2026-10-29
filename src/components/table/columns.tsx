@@ -409,7 +409,7 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'expected_close_date', label: 'Fällig / Abschluss', width: 130, render: (r) => <Muted>{r.expected_close_date ? dateTime(r.expected_close_date).slice(0, 10) : null}</Muted>, sortValue: (r) => r.expected_close_date ?? '' },
   { key: 'value', label: 'Wert', width: 110, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
   { key: 'title', label: 'Deal', width: 240, render: (r) => <span className="truncate font-medium">{r.title}</span>, sortValue: (r) => r.title },
-  { key: 'deal.passiert', label: 'Was ist passiert?', width: 260, render: (r) => <PassiertCell dealId={r.id} />, sortValue: () => 0 },
+  { key: 'deal.passiert', label: 'Was ist passiert?', width: 260, render: (r) => <PassiertCell dealId={r.id} quelle={r.custom?.quelle ?? null} />, sortValue: () => 0 },
   { key: 'deal.wv', label: 'Nächste Wiedervorlage', width: 210, render: (r) => r.naechste_wv
       ? <span className="block truncate text-[13px]" title={r.naechste_wv.title}><b className="font-medium">{dateTime(r.naechste_wv.due_at).slice(0, 10)}</b> <span className="text-muted">· {r.naechste_wv.title}</span></span>
       : r.ohne_datum ? <span className="chip bg-lose/10 text-lose">ohne Datum</span> : <span className="text-muted">–</span>,

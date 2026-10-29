@@ -19,3 +19,12 @@ export type PipelineArt = 'kalt' | 'faeden' | null;
 const PipelineArtContext = createContext<PipelineArt>(null);
 export const PipelineArtProvider = PipelineArtContext.Provider;
 export const usePipelineArt = () => useContext(PipelineArtContext);
+
+/** Sofort sichtbare Aenderung einer Tabellenzeile, bevor der Server fertig ist. */
+export type ZeilenPatch = {
+  stage_id?: string; stage?: { name: string; color: string } | null; custom?: Record<string, string | null>;
+  naechste_wv?: { due_at: string; title: string } | null; ohne_datum?: boolean;
+};
+const ZeilenPatchContext = createContext<((dealId: string, patch: ZeilenPatch | null) => void) | null>(null);
+export const ZeilenPatchProvider = ZeilenPatchContext.Provider;
+export const useZeilenPatch = () => useContext(ZeilenPatchContext);

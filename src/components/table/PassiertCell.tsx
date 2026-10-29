@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { usePipelineArt } from './StagesContext';
-import { KALT_EINTRAEGE, FAEDEN_EINTRAEGE, wiedervorlageTage } from '@/lib/passiert';
+import { useState } from 'react';
+import { usePipelineArt, useStages, useZeilenPatch, type ZeilenPatch } from './StagesContext';
+import { KALT_EINTRAEGE, FAEDEN_EINTRAEGE, passiertRegel, wiedervorlageTage } from '@/lib/passiert';
 import { wasIstPassiert, wiedervorlageSetzen } from '@/app/actions/records';
 
 const inTagen = (n: number) => {
@@ -13,37 +13,53 @@ const inTagen = (n: number) => {
 
 /**
  * "Was ist passiert?" direkt in der Tabellenzeile: Auswahl legt Aktivitaet an,
- * setzt Phase und Quelle. Wo noetig erscheint gleich das Feld fuer die
- * Wiedervorlage (Enter speichert). Nichts oeffnet sich.
+ * setzt Phase und Quelle. Die Zeile aendert sich sofort, gespeichert wird im
+ * Hintergrund. Wo noetig erscheint gleich das Feld fuer die Wiedervorlage
+ * (Enter speichert). Nichts oeffnet sich.
  */
-export default function PassiertCell({ dealId }: { dealId: string }) {
+export default function PassiertCell({ dealId, quelle }: { dealId: string; quelle: string | null }) {
   const art = usePipelineArt();
-  const [pending, start] = useTransition();
+  const stages = useStages();
+  const patchRow = useZeilenPatch();
   const [wv, setWv] = useState(false);
   const [datum, setDatum] = useState(inTagen(3));
   const [betreff, setBetreff] = useState('');
   const [fertig, setFertig] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [laeuft, setLaeuft] = useState(0);
 
   const eintraege = art === 'faeden' ? FAEDEN_EINTRAEGE : art === 'kalt' ? KALT_EINTRAEGE : null;
   if (!eintraege) return <span className="text-muted">–</span>;
 
-  const waehlen = (eintrag: string) => start(async () => {
-    setFehler(null);
-    try {
-      const r = await wasIstPassiert(dealId, eintrag);
-      setFertig(eintrag);
-      if (r.wiedervorlage) { setDatum(inTagen(wiedervorlageTage(eintrag))); setBetreff(''); setWv(true); }
-    } catch (e) { setFehler(e instanceof Error ? e.message : 'Fehler'); }
-  });
+  const imHintergrund = (fn: () => Promise<unknown>, rueckgaengig: () => void) => {
+    setLaeuft((n) => n + 1);
+    fn().catch((e) => { rueckgaengig(); setFehler(e instanceof Error ? e.message : 'Speichern fehlgeschlagen'); })
+      .finally(() => setLaeuft((n) => n - 1));
+  };
 
-  const speichern = () => start(async () => {
+  const waehlen = (eintrag: string) => {
     setFehler(null);
-    try {
-      await wiedervorlageSetzen(dealId, new Date(`${datum}T09:00`).toISOString(), betreff);
-      setWv(false);
-    } catch (e) { setFehler(e instanceof Error ? e.message : 'Fehler'); }
-  });
+    const regel = passiertRegel(eintrag, quelle);
+    if (!regel) return;
+    // Sofort anzeigen: Phase, Quelle
+    const patch: ZeilenPatch = {};
+    const ziel = regel.phase ? stages?.find((s) => s.name.trim().toLowerCase() === regel.phase!.toLowerCase()) : null;
+    if (ziel) { patch.stage_id = ziel.id; patch.stage = { name: ziel.name, color: ziel.color }; }
+    if (regel.quelle && !quelle) patch.custom = { quelle: regel.quelle };
+    patchRow?.(dealId, patch);
+    setFertig(eintrag);
+    if (regel.wiedervorlage) { setDatum(inTagen(wiedervorlageTage(eintrag))); setBetreff(''); setWv(true); }
+    imHintergrund(() => wasIstPassiert(dealId, eintrag), () => { patchRow?.(dealId, null); setFertig(null); });
+  };
+
+  const speichern = () => {
+    setFehler(null);
+    const iso = new Date(`${datum}T09:00`).toISOString();
+    const titel = betreff.trim() || 'Nachfassen';
+    setWv(false);
+    patchRow?.(dealId, { naechste_wv: { due_at: iso, title: titel }, ohne_datum: false });
+    imHintergrund(() => wiedervorlageSetzen(dealId, iso, betreff), () => setWv(true));
+  };
 
   return (
     <div data-kein-zeilenklick className="min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -57,9 +73,9 @@ export default function PassiertCell({ dealId }: { dealId: string }) {
           <button className="sr-only">Speichern</button>
         </form>
       ) : (
-        <select value="" disabled={pending} onChange={(e) => e.target.value && waehlen(e.target.value)}
+        <select value="" onChange={(e) => e.target.value && waehlen(e.target.value)}
                 className="input !w-full !py-1 text-[13px]" aria-label="Was ist passiert?">
-          <option value="">{pending ? 'Speichern …' : fertig ? `✓ ${fertig}` : 'Was ist passiert?'}</option>
+          <option value="">{fertig ? `✓ ${fertig}${laeuft ? ' …' : ''}` : 'Was ist passiert?'}</option>
           {eintraege.map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
       )}
