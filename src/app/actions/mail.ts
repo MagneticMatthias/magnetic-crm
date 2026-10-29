@@ -58,5 +58,5 @@ async function nachziehen(supabase: Awaited<ReturnType<typeof ctx>>['supabase'],
     .eq('type', 'email').eq('direction', 'out').not('deal_id', 'is', null)
     .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
   const dealIds = [...new Set((data ?? []).map((a) => a.deal_id as string))];
-  for (const id of dealIds) await phaseNachziehen(supabase, id, ['E-Mail geschrieben']);
+  for (const id of dealIds) await phaseNachziehen(supabase, id, ['E-Mail geschrieben', 'Angeschrieben']);
 }

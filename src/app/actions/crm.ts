@@ -121,7 +121,7 @@ type Db = Awaited<ReturnType<typeof ctx>>['supabase'];
  * Laufzeit umbenannt werden koennen - passt keiner, passiert nichts.
  */
 function phaseAusAktivitaet(formData: FormData, type: string): string[] {
-  if (type === 'linkedin') return ['LinkedIn angeschrieben'];
+  if (type === 'linkedin') return ['LinkedIn angeschrieben', 'Angeschrieben'];
   // E-Mail bewusst NICHT: von Hand protokolliert steht nicht fest, wer
   // geschrieben hat, und eine eingehende Absage ist nicht "E-Mail
   // geschrieben". Fuer selbst verschickte Mails setzt sendDealEmail die

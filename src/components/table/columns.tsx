@@ -400,6 +400,7 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'deal.betrag', label: 'Betrag (netto)', width: 130, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
   { key: 'deal.quelle', label: 'Quelle', width: 170, render: (r) => <Muted>{r.custom?.quelle}</Muted>, sortValue: (r) => r.custom?.quelle ?? '' },
   { key: 'deal.produkt', label: 'Produkt', width: 180, render: (r) => <Muted>{r.custom?.produkt}</Muted>, sortValue: (r) => r.custom?.produkt ?? '' },
+  { key: 'deal.angeschrieben_am', label: 'Angeschrieben am', width: 150, render: (r) => <Muted>{r.custom?.angeschrieben_am ? dateTime(r.custom.angeschrieben_am).slice(0, 10) : null}</Muted>, sortValue: (r) => r.custom?.angeschrieben_am ?? '' },
   { key: 'deal.anlass', label: 'Anlass', width: 170, render: (r) => <Muted>{r.custom?.anlass}</Muted>, sortValue: (r) => r.custom?.anlass ?? '' },
   { key: 'created_at', label: 'Deal erstellt am', width: 160, render: (r) => <span className="text-muted">{dateTime(r.created_at)}</span>, sortValue: (r) => r.created_at },
   { key: 'last_activity_at', label: 'Letzte Aktivität', width: 160, render: (r) => <span className="text-muted">{dateTime(r.last_activity_at)}</span>, sortValue: (r) => r.last_activity_at ?? '' },

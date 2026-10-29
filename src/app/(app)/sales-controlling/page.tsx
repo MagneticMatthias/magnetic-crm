@@ -107,6 +107,24 @@ export default async function ReportsPage({
     }),
   })).filter((f) => f.rows.length > 0);
 
+  // Kreuztabellen: Quelle x Phase und Produkt x Phase
+  const phasenSpalten = selected
+    ? stageList.filter((st) => st.pipeline_id === selected.id).map((st) => ({ ids: [st.id], name: st.name }))
+    : [...new Set(stageList.map((st) => st.name))].map((n) => ({ ids: stageList.filter((st) => st.name === n).map((st) => st.id), name: n }));
+  const kreuz = (feld: 'quelle' | 'produkt') => {
+    const werte = [...new Set(allDeals.map((d) => d.custom?.[feld] || '(leer)'))].sort((a, b) =>
+      a === '(leer)' ? 1 : b === '(leer)' ? -1 : a.localeCompare(b, 'de'));
+    return werte.map((w) => ({
+      wert: w,
+      je: phasenSpalten.map((ph) => allDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w && ph.ids.includes(d.stage_id)).length),
+      gesamt: allDeals.filter((d) => (d.custom?.[feld] || '(leer)') === w).length,
+    }));
+  };
+  const kreuzTabellen = [
+    { titel: 'Quelle × Phase', zeilen: kreuz('quelle') },
+    { titel: 'Produkt × Phase', zeilen: kreuz('produkt') },
+  ];
+
   return (
     <>
       <PageHeader title="Sales-Controlling"
@@ -195,6 +213,33 @@ export default async function ReportsPage({
             </tbody>
           </table>
         </div>
+
+        {kreuzTabellen.map((t) => (
+          <div key={t.titel} className="card overflow-x-auto">
+            <h2 className="border-b border-line px-4 py-3 text-sm font-semibold">{t.titel}</h2>
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="border-b border-line bg-surface-2/50">
+                <tr>
+                  <th className="th">{t.titel.split(' ')[0]}</th>
+                  {phasenSpalten.map((ph) => <th key={ph.name} className="th text-right">{ph.name}</th>)}
+                  <th className="th text-right">Gesamt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {t.zeilen.map((z) => (
+                  <tr key={z.wert} className="border-b border-line last:border-0">
+                    <td className="td font-medium">{z.wert}</td>
+                    {z.je.map((n, i) => <td key={i} className={`td text-right tabular-nums ${n ? '' : 'text-muted/50'}`}>{n}</td>)}
+                    <td className="td text-right font-medium tabular-nums">{z.gesamt}</td>
+                  </tr>
+                ))}
+                {t.zeilen.length === 0 && (
+                  <tr><td className="td text-muted" colSpan={phasenSpalten.length + 2}>Keine Deals im Zeitraum.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
         <div className="grid gap-4 lg:grid-cols-2">
           {funnels.map((f) => (

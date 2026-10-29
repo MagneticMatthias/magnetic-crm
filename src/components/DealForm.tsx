@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LEAD_SOURCES } from '@/lib/labels';
-import { QUELLEN, PRODUKTE, ANLAESSE } from '@/lib/dealfelder';
+import { QUELLEN, PRODUKTE, ANLAESSE, vorschlagName } from '@/lib/dealfelder';
 import type { Contact, Profile, Stage } from '@/lib/types';
 import { contactName } from '@/lib/format';
 
@@ -34,6 +34,15 @@ export default function DealForm({
   betragPflicht?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  // Namensvorschlag "<Firma> · <Produkt> <Anlass>", bis selbst etwas eingetippt wird
+  const [contactId, setContactId] = useState(values?.contact_id ?? '');
+  const [produkt, setProdukt] = useState('');
+  const [anlass, setAnlass] = useState('');
+  const [titel, setTitel] = useState(values?.title ?? '');
+  const [selbst, setSelbst] = useState(Boolean(values?.title));
+  const firma = contacts.find((c) => c.id === contactId)?.company ?? '';
+  const vorschlag = vorschlagName(firma, produkt, anlass);
+  const titelWert = selbst ? titel : vorschlag;
 
   return (
     <form
@@ -48,7 +57,8 @@ export default function DealForm({
       <div>
         <label className="label" htmlFor="title">Titel</label>
         <input id="title" name="title" className="input" required
-               defaultValue={values?.title ?? ''} placeholder="z. B. Nordlicht GmbH – Coaching" />
+               value={titelWert} onChange={(e) => { setSelbst(true); setTitel(e.target.value); }}
+               placeholder="wird aus Firma, Produkt und Anlass vorgeschlagen" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -71,7 +81,7 @@ export default function DealForm({
 
       <div>
         <label className="label" htmlFor="contact_id">Kontakt</label>
-        <select id="contact_id" name="contact_id" className="input" defaultValue={values?.contact_id ?? ''}>
+        <select id="contact_id" name="contact_id" className="input" value={contactId} onChange={(e) => setContactId(e.target.value)}>
           <option value="">– kein Kontakt –</option>
           {contacts.map((c) => (
             <option key={c.id} value={c.id}>
@@ -91,7 +101,7 @@ export default function DealForm({
         </div>
         <div>
           <label className="label" htmlFor="produkt">Produkt <span className="text-lose">*</span></label>
-          <select id="produkt" name="produkt" className="input" required defaultValue="">
+          <select id="produkt" name="produkt" className="input" required value={produkt} onChange={(e) => setProdukt(e.target.value)}>
             <option value="" disabled>– bitte wählen –</option>
             {PRODUKTE.map((q) => <option key={q} value={q}>{q}</option>)}
           </select>
@@ -100,7 +110,8 @@ export default function DealForm({
 
       <div>
         <label className="label" htmlFor="anlass">Anlass</label>
-        <input id="anlass" name="anlass" className="input" list="anlaesse" placeholder="z. B. electronica 2026" />
+        <input id="anlass" name="anlass" className="input" list="anlaesse" placeholder="z. B. electronica 2026"
+               value={anlass} onChange={(e) => setAnlass(e.target.value)} />
         <datalist id="anlaesse">{ANLAESSE.map((a) => <option key={a} value={a} />)}</datalist>
       </div>
 

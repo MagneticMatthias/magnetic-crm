@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
-import { QUELLEN, PRODUKTE, ANLAESSE } from '@/lib/dealfelder';
+import { QUELLEN, PRODUKTE, ANLAESSE, vorschlagName } from '@/lib/dealfelder';
 import { istFaeden, istKaltakquise } from '@/lib/faeden';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
@@ -62,9 +62,11 @@ function NeuerDealForm({
   const [produkt, setProdukt] = useState('');
   const [anlass, setAnlass] = useState('');
   const [title, setTitle] = useState('');
+  const [selbst, setSelbst] = useState(false);
+  const titelWert = selbst ? title : vorschlagName(firma, produkt, anlass);
   return (
     <form className="mb-4 space-y-3 rounded-lg border border-line bg-surface-2/50 p-3"
-          onSubmit={(e) => { e.preventDefault(); onSave(stageId, { quelle, produkt, anlass: anlass || null, title: title || null, betrag: betrag || null }); }}>
+          onSubmit={(e) => { e.preventDefault(); onSave(stageId, { quelle, produkt, anlass: anlass || null, title: titelWert || null, betrag: betrag || null }); }}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label">Phase<span className="text-lose"> *</span></label>
@@ -81,7 +83,8 @@ function NeuerDealForm({
         </div>
         <div>
           <label className="label">Name des Deals</label>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={firma ?? 'Neuer Deal'} />
+          <input className="input" value={titelWert} onChange={(e) => { setSelbst(true); setTitle(e.target.value); }}
+                 placeholder={firma ?? 'Neuer Deal'} />
         </div>
         <div>
           <label className="label">Quelle<span className="text-lose"> *</span></label>

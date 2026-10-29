@@ -52,7 +52,7 @@ export async function sendDealEmail(formData: FormData) {
   });
 
   // Hier ist die Richtung bekannt: wir haben geschrieben.
-  if (dealId) await phaseNachziehen(supabase, dealId, ['E-Mail geschrieben']);
+  if (dealId) await phaseNachziehen(supabase, dealId, ['E-Mail geschrieben', 'Angeschrieben']);
 
   if (dealId) revalidatePath(`/deals/${dealId}`);
   if (contactId) revalidatePath(`/kontakte/${contactId}`);

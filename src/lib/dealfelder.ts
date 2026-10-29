@@ -14,3 +14,9 @@ export const ANLAESSE = [
   'electronica 2026', 'BAU 2027', 'ISH 2027', 'Expo Real 2026', 'Expo Real 2027',
   'Natuvion CONNECT 2026', 'kein Anlass',
 ] as const;
+
+/** Namensvorschlag fuer einen neuen Deal: "<Firma> · <Produkt> <Anlass>" */
+export function vorschlagName(firma: string | null | undefined, produkt: string, anlass: string): string {
+  const rest = [produkt, anlass && anlass !== 'kein Anlass' ? anlass : ''].filter(Boolean).join(' ');
+  return [firma || '', rest].filter(Boolean).join(' · ');
+}
