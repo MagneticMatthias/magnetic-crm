@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     supabase.from('activities').select('*, user:profiles(full_name, email)')
       .eq('org_id', orgId).gte('occurred_at', last14.toISOString())
       .order('occurred_at', { ascending: false }).limit(400),
-    supabase.from('tasks').select('*, deal:deals(id, title), contact:contacts(id, company, persons:contact_persons(first_name, last_name, is_primary))')
+    supabase.from('tasks').select('*, deal:deals(id, title, contact:contacts(id, company, persons:contact_persons(first_name, last_name, is_primary))), contact:contacts(id, company, persons:contact_persons(first_name, last_name, is_primary))')
       .eq('org_id', orgId).eq('assignee_id', profile.id).eq('done', false)
       .order('due_at', { nullsFirst: false }).limit(8),
   ]);
@@ -75,6 +75,12 @@ export default async function DashboardPage() {
     };
   });
 
+  // Aufgaben, die nur am Deal haengen, bekommen den Kontakt des Deals
+  type AufgabeRoh = Parameters<typeof TaskList>[0]['tasks'][number] & {
+    deal: { id: string; title: string; contact?: Parameters<typeof TaskList>[0]['tasks'][number]['contact'] } | null;
+  };
+  const meineAufgaben = ((tasks ?? []) as AufgabeRoh[]).map((t) => ({ ...t, contact: t.contact ?? t.deal?.contact ?? null }));
+
   const hotDeals = [...open]
     .sort((a, b) => Number(b.value) - Number(a.value))
     .slice(0, 6);
@@ -106,7 +112,7 @@ export default async function DashboardPage() {
               <h2 className="text-sm font-semibold">Deine nächsten Aufgaben</h2>
               <Link href="/aufgaben" className="text-xs text-brand hover:underline">Alle Aufgaben</Link>
             </div>
-            <TaskList tasks={(tasks ?? []) as Parameters<typeof TaskList>[0]['tasks']} showContext groupBy="zeit" oeffnetKontakt />
+            <TaskList tasks={meineAufgaben} showContext groupBy="zeit" oeffnetKontakt />
           </div>
 
           <div className="card p-4">
