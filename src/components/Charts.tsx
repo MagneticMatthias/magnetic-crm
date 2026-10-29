@@ -2,7 +2,7 @@
 
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import { seriesColor } from '@/lib/palette';
 import { eur, num } from '@/lib/format';
@@ -114,6 +114,37 @@ export function YearBars({ data }: { data: { jahr: string; umsatz: number }[] })
         <Tooltip contentStyle={tooltipStyle} formatter={(v) => eur(Number(v))} />
         <Bar dataKey="umsatz" fill="var(--brand)" radius={[6, 6, 0, 0]} name="Umsatz"
              label={{ position: 'top', fontSize: 11, fill: 'var(--muted)', formatter: (v: unknown) => (Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(1).replace('.0', '')}k` : String(v)) }} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Ansprachen je Tag, gestapelt nach Kanal (LinkedIn, Anruf, E-Mail). */
+export function AnsprachenChart({ data }: { data: { tag: string; linkedin: number; anruf: number; mail: number }[] }) {
+  const reihen = [
+    { key: 'linkedin', name: 'LinkedIn', farbe: 'var(--kanal-linkedin)' },
+    { key: 'anruf', name: 'Anruf', farbe: 'var(--kanal-anruf)' },
+    { key: 'mail', name: 'E-Mail', farbe: 'var(--kanal-mail)' },
+  ];
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="25%">
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="tag" tick={AXIS} axisLine={false} tickLine={false} />
+        <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--surface-2)' }}
+                 itemStyle={{ color: 'var(--text)' }}
+                 labelFormatter={(tag, items) => {
+                   const gesamt = (items ?? []).reduce((x, i) => x + Number(i.value ?? 0), 0);
+                   return `${tag} · ${gesamt} gesamt`;
+                 }} />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }}
+                formatter={(name) => <span style={{ color: 'var(--muted)' }}>{name}</span>} />
+        {reihen.map((r, i) => (
+          <Bar key={r.key} dataKey={r.key} name={r.name} stackId="a" fill={r.farbe}
+               stroke="var(--surface)" strokeWidth={2}
+               radius={i === reihen.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   );

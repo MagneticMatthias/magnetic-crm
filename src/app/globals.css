@@ -12,6 +12,10 @@
   --win: #16a34a;
   --lose: #dc2626;
   --warn: #d97706;
+  /* Kanaele im Dashboard (geprueft auf Farbenblindheit und Kontrast) */
+  --kanal-linkedin: #0a66c2;
+  --kanal-anruf: #e5006d;
+  --kanal-mail: #d97706;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +31,9 @@
     --win: #34d399;
     --lose: #f87171;
     --warn: #fbbf24;
+    --kanal-linkedin: #3b8ef0;
+    --kanal-anruf: #ec1f7d;
+    --kanal-mail: #d97706;
   }
 }
 
