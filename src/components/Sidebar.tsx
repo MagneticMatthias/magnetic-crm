@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AppLogo } from '@/components/AppLogo';
+import AnrufeZaehlenSchalter from '@/components/AnrufeZaehlenSchalter';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -46,8 +47,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
 ];
 
 export default function Sidebar({
-  orgName, userName, pipelines,
-}: { orgName: string; userName: string; pipelines: Pipeline[] }) {
+  orgName, userName, pipelines, anrufeZaehlen,
+}: { orgName: string; userName: string; pipelines: Pipeline[]; anrufeZaehlen?: { an: boolean; seit: string | null } }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -132,8 +133,13 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
+        {anrufeZaehlen && (
+          <div className="mt-auto pt-2">
+            <AnrufeZaehlenSchalter an={anrufeZaehlen.an} seit={anrufeZaehlen.seit} />
+          </div>
+        )}
         {/* Welche Fassung laeuft hier? Erspart das Raten nach jedem Update. */}
-        <p className="mt-auto truncate border-t border-line px-4 py-2.5 text-[10px] text-muted"
+        <p className={`${anrufeZaehlen ? '' : 'mt-auto '}truncate border-t border-line px-4 py-2.5 text-[10px] text-muted`}
            title="Build-Stand dieser Fassung">
           Stand: {process.env.NEXT_PUBLIC_BUILD_STAND || 'lokal'}
         </p>

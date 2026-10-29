@@ -6,6 +6,7 @@ import {
   anrufeErledigt, anrufmonitorStatus, gleicheNummer, normNummer, nummernAusFeld, wartendeAnrufe,
 } from '@/lib/fritz';
 import { phaseNachziehen } from '@/app/actions/crm';
+import { anrufeZaehlenLesen } from '@/app/actions/akquise';
 
 export type NeuerAnruf = {
   activityId: string;
@@ -38,12 +39,25 @@ export async function syncAnrufe(): Promise<{ neu: NeuerAnruf[] }> {
 
   const neu: NeuerAnruf[] = [];
   const erledigt: string[] = [];
+  const zaehlen = (await anrufeZaehlenLesen()).an;
 
   for (const a of wartend) {
     const nr = normNummer(a.nummer);
     const treffer = kartei.find((k) => gleicheNummer(k.nr, nr));
     erledigt.push(a.id);
-    if (!treffer) continue; // privat oder unbekannt: verwerfen
+    if (!treffer) {
+      // Ohne Kontakt im CRM: nur zaehlen, wenn "Anrufe mitzaehlen" an ist und
+      // der Anruf ausgehend war. Die Nummer wird dabei nicht gespeichert.
+      if (zaehlen && a.richtung === 'out') {
+        const { error } = await supabase.from('activities').insert({
+          org_id: orgId, user_id: profile.id, type: 'call', direction: 'out', message_id: `fritz-${a.id}`,
+          outcome: a.verbunden ? 'erreicht' : 'nicht_erreicht', duration_seconds: a.sekunden || null,
+          subject: 'Kaltakquise-Anruf (ohne Kontakt im CRM)', occurred_at: a.beginn,
+        });
+        if (error && error.code !== '23505') erledigt.pop();
+      }
+      continue; // sonst privat oder unbekannt: verwerfen
+    }
 
     const p = treffer.p as unknown as {
       contact_id: string; first_name: string | null; last_name: string | null; contact: { company: string | null } | null;

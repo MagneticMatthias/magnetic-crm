@@ -8,6 +8,7 @@ import RealtimeSync from '@/components/RealtimeSync';
 import MailSyncPing from '@/components/MailSyncPing';
 import AnrufPing from '@/components/AnrufPing';
 import { anrufmonitorAktiv } from '@/lib/fritz';
+import { anrufeZaehlenLesen } from '@/app/actions/akquise';
 import { mailSyncConfigured } from '@/lib/mailsync';
 import type { Pipeline } from '@/lib/types';
 
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         orgName={org?.name ?? 'Organisation'}
         userName={profile.full_name || profile.email || 'Nutzer'}
         pipelines={(pipelines ?? []) as Pipeline[]}
+        anrufeZaehlen={anrufmonitorAktiv() ? await anrufeZaehlenLesen() : undefined}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-surface/80 py-2.5 pl-14 pr-3 backdrop-blur sm:gap-3 md:px-4">
