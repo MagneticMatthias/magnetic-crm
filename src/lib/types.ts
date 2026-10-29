@@ -170,8 +170,10 @@ export type Deal = {
 export type DealWithContact = Deal & {
   contact: ContactWithPersons | null;
   stage?: { name: string; color: string } | null;
-  /** Faeden: offener Deal ohne offene Wiedervorlage */
+  /** Offener Deal, der eine Wiedervorlage braucht, aber keine hat */
   ohne_datum?: boolean;
+  /** Naechste offene Wiedervorlage */
+  naechste_wv?: { due_at: string; title: string } | null;
 };
 
 export type Activity = {

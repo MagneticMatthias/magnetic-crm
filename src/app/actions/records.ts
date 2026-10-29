@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { wiedervorlagenZuordnen, type Wiedervorlage } from '@/lib/wiedervorlage';
-import { nachPhasenwechsel, zuFaden } from '@/lib/phasenwechsel';
+import { nachPhasenwechsel, passiertAnwenden, zuFaden } from '@/lib/phasenwechsel';
+import { passiertRegel } from '@/lib/passiert';
 import { istFaeden } from '@/lib/faeden';
 import { ctx, str } from '@/lib/ctx';
 import { smtpConfigured } from '@/lib/mailer';
@@ -219,6 +220,38 @@ export async function setDealStage(dealId: string, stageId: string) {
     .update({ stage_id: stageId, pipeline_id: stage.pipeline_id }).eq('id', dealId);
   if (error) throw new Error(error.message);
   await nachPhasenwechsel(supabase, dealId, stageId);
+  refresh();
+}
+
+/** Tabelle: "Was ist passiert?" - Aktivitaet anlegen, Phase und Quelle setzen. */
+export async function wasIstPassiert(dealId: string, eintrag: string): Promise<{ wiedervorlage: boolean }> {
+  const { supabase, orgId, profile } = await ctx();
+  const { data: deal } = await supabase.from('deals').select('contact_id, custom').eq('id', dealId).single();
+  if (!deal) throw new Error('Deal nicht gefunden');
+  const regel = passiertRegel(eintrag, (deal.custom as Record<string, string | null> | null)?.quelle);
+  if (!regel) throw new Error('Unbekannter Eintrag');
+  const { error } = await supabase.from('activities').insert({
+    org_id: orgId, deal_id: dealId, contact_id: deal.contact_id, user_id: profile.id,
+    type: regel.type, outcome: regel.outcome ?? null, subject: eintrag, occurred_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(error.message);
+  await passiertAnwenden(supabase, dealId, regel);
+  refresh();
+  return { wiedervorlage: regel.wiedervorlage };
+}
+
+/** Wiedervorlage direkt aus der Tabelle (Aufgabe mit Datum am Deal). */
+export async function wiedervorlageSetzen(dealId: string, faelligIso: string, betreff: string) {
+  if (!faelligIso) throw new Error('Datum fehlt');
+  const { supabase, orgId, profile } = await ctx();
+  const { data: deal } = await supabase.from('deals').select('contact_id, title').eq('id', dealId).single();
+  const { error } = await supabase.from('tasks').insert({
+    org_id: orgId, deal_id: dealId, contact_id: deal?.contact_id ?? null,
+    assignee_id: profile.id, created_by: profile.id, priority: 2,
+    title: betreff.trim() || `Nachfassen: ${deal?.title ?? 'Deal'}`,
+    due_at: faelligIso,
+  });
+  if (error) throw new Error(error.message);
   refresh();
 }
 

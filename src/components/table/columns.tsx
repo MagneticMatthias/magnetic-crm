@@ -6,7 +6,8 @@ import { UserSearch, Users, ListTree, ExternalLink, Phone, ChevronDown, Check } 
 import CopyButton from '@/components/CopyButton';
 import LinkedInIcon from '@/components/LinkedInIcon';
 import { setDealStage, updateContactCustom } from '@/app/actions/records';
-import { useStages } from './StagesContext';
+import { useStages, usePipelineArt } from './StagesContext';
+import PassiertCell from './PassiertCell';
 import { Badge } from '@/components/Badge';
 import { dateTime, eur, personName, primaryPerson, phoneOf } from '@/lib/format';
 import { dialHref, splitPhones, useDialScheme } from '@/lib/dial';
@@ -270,7 +271,9 @@ function StageCell({ dealId, stageId, stage, pipelineId }: {
   pipelineId?: string | null;
 }) {
   const alle = useStages();
-  const stages = pipelineId ? alle?.filter((s) => s.pipeline_id === pipelineId) : alle;
+  const art = usePipelineArt();
+  // Kaltakquise: Phase ist nur Anzeige, sie folgt aus "Was ist passiert?"
+  const stages = art === 'kalt' ? null : pipelineId ? alle?.filter((s) => s.pipeline_id === pipelineId) : alle;
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -392,12 +395,7 @@ export const CONTACT_DEFAULT_COLUMNS = [
 /* -------------------------------- Deals ------------------------------- */
 
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
-  { key: 'company', label: 'Firmenname', width: 260, render: (r) => (
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="min-w-0"><Firma name={r.contact?.company} /></span>
-        {r.ohne_datum && <span className="chip shrink-0 bg-lose/10 text-lose" title="Keine offene Wiedervorlage">ohne Datum</span>}
-      </span>
-    ), sortValue: (r) => r.contact?.company ?? '' },
+  { key: 'company', label: 'Firmenname', width: 260, render: (r) => <Firma name={r.contact?.company} />, sortValue: (r) => r.contact?.company ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
   { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} pipelineId={r.pipeline_id} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },
@@ -411,6 +409,11 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
   { key: 'expected_close_date', label: 'Fällig / Abschluss', width: 130, render: (r) => <Muted>{r.expected_close_date ? dateTime(r.expected_close_date).slice(0, 10) : null}</Muted>, sortValue: (r) => r.expected_close_date ?? '' },
   { key: 'value', label: 'Wert', width: 110, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
   { key: 'title', label: 'Deal', width: 240, render: (r) => <span className="truncate font-medium">{r.title}</span>, sortValue: (r) => r.title },
+  { key: 'deal.passiert', label: 'Was ist passiert?', width: 260, render: (r) => <PassiertCell dealId={r.id} />, sortValue: () => 0 },
+  { key: 'deal.wv', label: 'Nächste Wiedervorlage', width: 210, render: (r) => r.naechste_wv
+      ? <span className="block truncate text-[13px]" title={r.naechste_wv.title}><b className="font-medium">{dateTime(r.naechste_wv.due_at).slice(0, 10)}</b> <span className="text-muted">· {r.naechste_wv.title}</span></span>
+      : r.ohne_datum ? <span className="chip bg-lose/10 text-lose">ohne Datum</span> : <span className="text-muted">–</span>,
+    sortValue: (r) => r.naechste_wv?.due_at ?? 'Z' },
   { key: 'deal.betrag', label: 'Betrag (netto)', width: 130, render: (r) => <span className="tabular-nums">{eur(r.value)}</span>, sortValue: (r) => Number(r.value ?? 0) },
   { key: 'deal.quelle', label: 'Quelle', width: 170, render: (r) => <Muted>{r.custom?.quelle}</Muted>, sortValue: (r) => r.custom?.quelle ?? '' },
   { key: 'deal.produkt', label: 'Produkt', width: 180, render: (r) => <Muted>{r.custom?.produkt}</Muted>, sortValue: (r) => r.custom?.produkt ?? '' },
@@ -435,7 +438,12 @@ export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
 
 /** Faeden: ein Deal = ein Projekt, deshalb steht der Deal-Name vorne */
 export const FAEDEN_DEFAULT_COLUMNS = [
-  'title', 'company', 'stage', 'deal.betrag', 'deal.produkt', 'last_contacted_at', 'persons', 'phone',
+  'title', 'company', 'deal.passiert', 'stage', 'deal.betrag', 'deal.wv', 'deal.quelle',
+];
+
+/** Kaltakquise: arbeiten nur in der Tabelle, ein Klick pro Firma */
+export const KALT_DEFAULT_COLUMNS = [
+  'company', 'deal.passiert', 'stage', 'deal.quelle', 'custom.signalstaerke', 'deal.wv',
 ];
 
 export const DEAL_DEFAULT_COLUMNS = [

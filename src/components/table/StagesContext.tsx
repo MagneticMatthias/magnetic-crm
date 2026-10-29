@@ -13,3 +13,9 @@ const StagesContext = createContext<Stage[] | null>(null);
 
 export const StagesProvider = StagesContext.Provider;
 export const useStages = () => useContext(StagesContext);
+
+/** Welche Pipeline die Tabelle zeigt: steuert "Was ist passiert?" und ob die Phase nur Anzeige ist. */
+export type PipelineArt = 'kalt' | 'faeden' | null;
+const PipelineArtContext = createContext<PipelineArt>(null);
+export const PipelineArtProvider = PipelineArtContext.Provider;
+export const usePipelineArt = () => useContext(PipelineArtContext);

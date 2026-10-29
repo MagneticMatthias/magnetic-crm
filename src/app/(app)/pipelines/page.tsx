@@ -2,7 +2,7 @@ import { ctx } from '@/lib/ctx';
 import { nurPassendeFilter } from '@/lib/listenfilter';
 import { listenVonDeal } from '@/lib/listen';
 import { Empty } from '@/components/ui';
-import { istFaeden, ERLEDIGT_PHASEN } from '@/lib/faeden';
+import { istFaeden, istKaltakquise, ERLEDIGT_PHASEN } from '@/lib/faeden';
 import { eur } from '@/lib/format';
 import PipelineView from '@/components/PipelineView';
 import { applyFilter, DEAL_FIELDS, parseFilterParam } from '@/lib/filters';
@@ -46,17 +46,25 @@ export default async function PipelinesPage({
 
   let rows = (deals ?? []) as DealWithContact[];
 
-  // Faeden: offene Deals ohne offene Wiedervorlage rot markieren
+  // Naechste offene Wiedervorlage je Deal; rot "ohne Datum", wo eine fehlt:
+  // in den Faeden bei jedem offenen Deal, in der Kaltakquise bei Interesse
   const faeden = istFaeden(pipeline.name);
-  if (faeden) {
-    const { data: offen } = await supabase.from('tasks').select('deal_id, contact_id')
-      .eq('org_id', orgId).eq('done', false).not('due_at', 'is', null).limit(5000);
-    const mitDatumDeal = new Set((offen ?? []).map((t) => t.deal_id).filter(Boolean));
-    const mitDatumKontakt = new Set((offen ?? []).filter((t) => !t.deal_id).map((t) => t.contact_id));
-    rows = rows.map((d) => ({
-      ...d,
-      ohne_datum: d.status === 'offen' && !mitDatumDeal.has(d.id) && !mitDatumKontakt.has(d.contact_id),
-    }));
+  const kalt = istKaltakquise(pipeline.name);
+  {
+    const { data: offen } = await supabase.from('tasks').select('deal_id, contact_id, due_at, title')
+      .eq('org_id', orgId).eq('done', false).not('due_at', 'is', null).order('due_at').limit(5000);
+    const proDeal = new Map<string, { due_at: string; title: string }>();
+    const proKontakt = new Map<string, { due_at: string; title: string }>();
+    for (const t of offen ?? []) {
+      const w = { due_at: t.due_at as string, title: t.title as string };
+      if (t.deal_id) { if (!proDeal.has(t.deal_id)) proDeal.set(t.deal_id, w); }
+      else if (t.contact_id && !proKontakt.has(t.contact_id)) proKontakt.set(t.contact_id, w);
+    }
+    rows = rows.map((d) => {
+      const wv = proDeal.get(d.id) ?? (d.contact_id ? proKontakt.get(d.contact_id) : undefined) ?? null;
+      const braucht = d.status === 'offen' && (faeden || (kalt && d.stage?.name?.trim().toLowerCase() === 'interesse'));
+      return { ...d, naechste_wv: wv, ohne_datum: braucht && !wv };
+    });
   }
 
   if (q?.trim()) {

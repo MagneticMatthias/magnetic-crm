@@ -313,7 +313,13 @@ export default function RecordTable<T extends { id: string }>({
               {sorted.map((row) => {
                 const viewer = viewerOf(row.id);
                 return (
-                  <tr key={row.id} onClick={() => onRowClick(row)}
+                  <tr key={row.id}
+                      onClick={(e) => {
+                        // Knoepfe, Auswahlfelder, Links und Eingaben in der Zeile oeffnen nie die Detailansicht
+                        // (gilt auch fuer Menues im Portal, deren Klick React an die Zeile weiterreicht)
+                        if ((e.target as HTMLElement).closest('button, a, select, input, textarea, label, [data-kein-zeilenklick]')) return;
+                        onRowClick(row);
+                      }}
                       title={viewer ? `${viewer.name} hat diesen Datensatz gerade geöffnet` : undefined}
                       style={viewer ? { background: `${viewer.color}14` } : undefined}
                       className={`cursor-pointer border-t border-line transition hover:bg-surface-2/50 ${activeId === row.id ? 'bg-brand-soft/40' : ''}`}>

@@ -8,8 +8,9 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import RecordTable from '@/components/table/RecordTable';
-import { StagesProvider } from '@/components/table/StagesContext';
-import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS, FAEDEN_DEFAULT_COLUMNS } from '@/components/table/columns';
+import { StagesProvider, PipelineArtProvider } from '@/components/table/StagesContext';
+import { DEAL_COLUMNS, DEAL_DEFAULT_COLUMNS, FAEDEN_DEFAULT_COLUMNS, KALT_DEFAULT_COLUMNS } from '@/components/table/columns';
+import { istKaltakquise } from '@/lib/faeden';
 import DetailPanel from '@/components/DetailPanel';
 import PanelConfigurator from '@/components/PanelConfigurator';
 import { Modal } from '@/components/ui';
@@ -63,6 +64,7 @@ export default function PipelineView({
   faeden?: boolean;
 }) {
   const router = useRouter();
+  const kalt = istKaltakquise(pipeline.name);
   const [open, setOpen] = useState<{ contactId: string; dealId: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const [configuring, setConfiguring] = useState(false);
@@ -117,12 +119,13 @@ export default function PipelineView({
         </DndContext>
       </div>
 
+      <PipelineArtProvider value={faeden ? 'faeden' : kalt ? 'kalt' : null}>
       <StagesProvider value={stages}>
       <RecordTable
         rows={stageId ? rows.filter((d) => d.stage_id === stageId) : rows}
         columns={DEAL_COLUMNS}
-        defaultColumns={faeden ? FAEDEN_DEFAULT_COLUMNS : DEAL_DEFAULT_COLUMNS}
-        storageKey={faeden ? `faeden1:${pipeline.id}` : `deals2:${pipeline.id}`}
+        defaultColumns={faeden ? FAEDEN_DEFAULT_COLUMNS : kalt ? KALT_DEFAULT_COLUMNS : DEAL_DEFAULT_COLUMNS}
+        storageKey={faeden ? `faeden2:${pipeline.id}` : kalt ? `kalt1:${pipeline.id}` : `deals2:${pipeline.id}`}
         fields={DEAL_FIELDS}
         filter={filter}
         savedFilters={savedFilters}
@@ -144,6 +147,7 @@ export default function PipelineView({
         }
       />
       </StagesProvider>
+      </PipelineArtProvider>
 
       <Modal open={creating} onClose={() => setCreating(false)} title="Neuer Deal" wide>
         <DealForm

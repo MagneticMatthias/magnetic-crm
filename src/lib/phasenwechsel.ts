@@ -42,3 +42,26 @@ export async function zuFaden(supabase: SupabaseClient, dealId: string, orgId: s
   }).eq('id', dealId);
   if (error) throw new Error(error.message);
 }
+
+/**
+ * "Was ist passiert?" anwenden: Phase per Name in der Pipeline des Deals
+ * setzen (auch Verloren) und die Quelle eintragen, falls sie noch leer ist.
+ */
+export async function passiertAnwenden(
+  supabase: SupabaseClient, dealId: string, regel: { phase: string | null; quelle?: string },
+) {
+  const { data: deal } = await supabase.from('deals').select('pipeline_id, custom').eq('id', dealId).single();
+  if (!deal) return;
+  const custom = (deal.custom ?? {}) as Record<string, unknown>;
+  if (regel.quelle && !custom.quelle) {
+    await supabase.from('deals').update({ custom: { ...custom, quelle: regel.quelle } }).eq('id', dealId);
+  }
+  if (regel.phase) {
+    const { data: stages } = await supabase.from('pipeline_stages').select('id, name').eq('pipeline_id', deal.pipeline_id);
+    const ziel = (stages ?? []).find((s) => s.name.trim().toLowerCase() === regel.phase!.toLowerCase());
+    if (ziel) {
+      await supabase.from('deals').update({ stage_id: ziel.id }).eq('id', dealId);
+      await nachPhasenwechsel(supabase, dealId, ziel.id);
+    }
+  }
+}
