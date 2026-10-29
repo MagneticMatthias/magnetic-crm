@@ -5,6 +5,7 @@ import { Phone, StickyNote, Mail, CalendarDays, Share2 } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
 import { ERGEBNIS_LINKEDIN, ERGEBNIS_EMAIL, NICHT_JETZT } from '@/lib/passiert';
 import FollowUpPicker from '@/components/FollowUpPicker';
+import { imHintergrundSpeichern } from '@/lib/speichern';
 import type { ActivityType, CallKind, CallOutcome } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
 
@@ -42,7 +43,7 @@ export default function ActivityComposer({
     setKey((k) => k + 1);
     setBusy(true);
     setStatus({ ok: true, text: 'Wird gespeichert …' });
-    action(fd)
+    imHintergrundSpeichern(action(fd))
       .then(() => setStatus({ ok: true, text: 'Gespeichert' }))
       .catch((e) => setStatus({ ok: false, text: e instanceof Error ? e.message : 'Speichern fehlgeschlagen', fd }))
       .finally(() => setBusy(false));

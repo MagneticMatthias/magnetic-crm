@@ -253,7 +253,8 @@ export async function wasIstPassiert(dealId: string, eintrag: string): Promise<{
     passiertAnwenden(supabase, dealId, regel),
   ]);
   if (error) throw new Error(error.message);
-  refresh();
+  // Kein Neuaufbau der Seite pro Klick: die Zeile zeigt die Aenderung schon,
+  // neu geladen wird einmal, wenn alle Eintraege gespeichert sind (SpeichernHinweis).
   return { wiedervorlage: regel.wiedervorlage };
 }
 
@@ -269,7 +270,6 @@ export async function wiedervorlageSetzen(dealId: string, faelligIso: string, be
     due_at: faelligIso,
   });
   if (error) throw new Error(error.message);
-  refresh();
 }
 
 /** Knopf „Zu Faden machen“: Deal wandert nach Faeden, Betrag (netto) ist Pflicht. */

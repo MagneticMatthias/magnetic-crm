@@ -16,7 +16,7 @@ const leer = (): Zahlen => ({
 });
 export const ansprachen = (z: Zahlen) => z.inmail + z.anfrage + z.email + z.anrufe;
 
-type A = { type: string; subject: string | null; outcome: string | null; direction: string | null; duration_seconds: number | null; occurred_at: string };
+type A = { deal_id?: string | null; type: string; subject: string | null; outcome: string | null; direction: string | null; duration_seconds: number | null; occurred_at: string };
 
 /** Was eine Aktivitaet fuer die Akquise bedeutet. */
 function zaehle(z: Zahlen, a: A) {
@@ -69,12 +69,31 @@ export async function akquiseAuswerten(supabase: SupabaseClient, orgId: string, 
   const acts: A[] = [];
   for (let von = 0; ; von += 1000) {
     const { data } = await supabase.from('activities')
-      .select('type, subject, outcome, direction, duration_seconds, occurred_at')
+      .select('deal_id, type, subject, outcome, direction, duration_seconds, occurred_at')
       .eq('org_id', orgId).in('type', ['linkedin', 'email', 'call', 'note'])
       .gte('occurred_at', ladeAb.toISOString()).lt('occurred_at', ende.toISOString())
       .order('occurred_at').range(von, von + 999);
     acts.push(...((data ?? []) as A[]));
     if (!data || data.length < 1000) break;
+  }
+
+  // Auf "Angeschrieben" gesetzt, aber ohne Aktivitaet (z. B. ueber die Phase
+  // statt ueber "Was ist passiert?"): zaehlt trotzdem, Kanal aus der Quelle.
+  const { data: ohneAkt } = await supabase.from('deals').select('id, custom')
+    .eq('org_id', orgId).gte('custom->>angeschrieben_am', vorStart.toISOString())
+    .lt('custom->>angeschrieben_am', ende.toISOString()).limit(5000);
+  const mitNachricht = new Set(acts
+    .filter((a) => a.deal_id && (a.type === 'linkedin' || a.type === 'email') && !/^antwort/i.test(a.subject ?? ''))
+    .map((a) => a.deal_id as string));
+  for (const d of ohneAkt ?? []) {
+    if (mitNachricht.has(d.id)) continue;
+    const c = (d.custom ?? {}) as Record<string, string | null>;
+    const quelle = c.quelle ?? '';
+    acts.push({
+      deal_id: d.id, direction: null, outcome: null, duration_seconds: null, occurred_at: c.angeschrieben_am!,
+      type: quelle === 'E-Mail' ? 'email' : 'linkedin',
+      subject: quelle === 'LinkedIn Kontaktanfrage' ? 'Kontaktanfrage gesendet' : 'InMail gesendet',
+    });
   }
 
   const jetztZ = leer();

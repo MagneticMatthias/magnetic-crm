@@ -7,6 +7,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import RealtimeSync from '@/components/RealtimeSync';
 import MailSyncPing from '@/components/MailSyncPing';
 import AnrufPing from '@/components/AnrufPing';
+import SpeichernHinweis from '@/components/SpeichernHinweis';
 import { anrufmonitorAktiv } from '@/lib/fritz';
 import { anrufeZaehlenLesen } from '@/app/actions/akquise';
 import { mailSyncConfigured } from '@/lib/mailsync';
@@ -34,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="ml-auto flex items-center gap-3">
             <RealtimeSync userId={profile.id} name={profile.full_name || profile.email || 'Kollege'} />
             <MailSyncPing enabled={mailSyncConfigured()} />
+            <SpeichernHinweis />
             {anrufmonitorAktiv() && <AnrufPing />}
             <UserMenu
               name={profile.full_name || profile.email || 'Nutzer'}

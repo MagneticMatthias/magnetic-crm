@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePipelineArt, useStages, useZeilenPatch, type ZeilenPatch } from './StagesContext';
 import { KALT_EINTRAEGE, FAEDEN_EINTRAEGE, passiertRegel, wiedervorlageTage } from '@/lib/passiert';
 import { wasIstPassiert, wiedervorlageSetzen } from '@/app/actions/records';
+import { imHintergrundSpeichern } from '@/lib/speichern';
 
 const inTagen = (n: number) => {
   const d = new Date();
@@ -33,7 +34,7 @@ export default function PassiertCell({ dealId, quelle }: { dealId: string; quell
 
   const imHintergrund = (fn: () => Promise<unknown>, rueckgaengig: () => void) => {
     setLaeuft((n) => n + 1);
-    fn().catch((e) => { rueckgaengig(); setFehler(e instanceof Error ? e.message : 'Speichern fehlgeschlagen'); })
+    imHintergrundSpeichern(fn()).catch((e) => { rueckgaengig(); setFehler(e instanceof Error ? e.message : 'Speichern fehlgeschlagen'); })
       .finally(() => setLaeuft((n) => n - 1));
   };
 
