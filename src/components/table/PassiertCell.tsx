@@ -63,7 +63,11 @@ export default function PassiertCell({ dealId }: { dealId: string }) {
           {eintraege.map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
       )}
-      {wv && <p className="mt-0.5 text-[11px] text-muted">Wiedervorlage setzen – ohne Datum kein Interesse.</p>}
+      {wv && (
+        <p className="mt-0.5 text-[11px] text-muted">
+          {art === 'kalt' ? 'Wiedervorlage setzen – kein Interesse ohne Datum. Enter speichert.' : 'Wiedervorlage setzen, Enter speichert.'}
+        </p>
+      )}
       {fehler && <p className="mt-0.5 text-[11px] text-lose">{fehler}</p>}
     </div>
   );
