@@ -42,6 +42,12 @@ export default async function SettingsPage() {
       <PageHeader title="Einstellungen" subtitle={org?.name ?? undefined} />
 
       <div className="max-w-4xl space-y-8 p-4 sm:p-6">
+        <a href="/einstellungen/umstellung"
+           className="block rounded-xl border border-brand/40 bg-brand-soft/40 p-4 text-sm hover:bg-brand-soft">
+          <b className="text-brand">Umstellung Kaltakquise und Fäden</b>
+          <span className="block text-muted">Backup herunterladen, Vorschau ansehen, neue Phasen übernehmen.</span>
+        </a>
+
         {/* Profil */}
         <section className="card p-5">
           <h2 className="mb-4 text-sm font-semibold">Mein Profil</h2>
