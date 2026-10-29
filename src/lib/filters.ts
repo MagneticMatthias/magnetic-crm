@@ -1,3 +1,4 @@
+import { QUELLEN, PRODUKTE } from '@/lib/dealfelder';
 import type {
   ContactWithPersons, DealWithContact, FilterDefinition, FilterOperator, FilterRule,
 } from './types';
@@ -117,6 +118,12 @@ export const DEAL_FIELDS: FieldDef[] = [
     get: (r: DealWithContact) => r.source },
   { key: 'next_step', label: 'Nächster Schritt', type: 'text', group: 'Deal-Eigenschaften', icon: 'text',
     get: (r: DealWithContact) => r.next_step },
+  { key: 'deal.quelle', label: 'Quelle', type: 'select', group: 'Deal-Eigenschaften', icon: 'list',
+    options: [...QUELLEN], get: (r: DealWithContact) => r.custom?.quelle ?? null },
+  { key: 'deal.produkt', label: 'Produkt', type: 'select', group: 'Deal-Eigenschaften', icon: 'list',
+    options: [...PRODUKTE], get: (r: DealWithContact) => r.custom?.produkt ?? null },
+  { key: 'deal.anlass', label: 'Anlass', type: 'text', group: 'Deal-Eigenschaften', icon: 'text',
+    get: (r: DealWithContact) => r.custom?.anlass ?? null },
   { key: 'created_at', label: 'Deal erstellt am', type: 'date', group: 'Deal-Eigenschaften', icon: 'date',
     get: (r: DealWithContact) => r.created_at },
   { key: 'expected_close_date', label: 'Erwarteter Abschluss', type: 'date', group: 'Deal-Eigenschaften', icon: 'date',

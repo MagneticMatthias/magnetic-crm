@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
+import { QUELLEN, PRODUKTE, ANLAESSE } from '@/lib/dealfelder';
 import {
   Phone, Settings2, Mail, MoreVertical, X, User, ListChecks, NotebookPen,
   ChevronUp, ChevronDown, UserPlus, ExternalLink, Pin, Trash2, Star, Plus, UserCheck, ListTree, Paperclip,
@@ -41,6 +42,71 @@ const CUSTOM_LABEL: Record<string, string> = {
 };
 
 /* ------------------------- kleine Bausteine ------------------------- */
+
+/** Deal fuer diesen Kontakt anlegen: Phase, Quelle und Produkt sind Pflicht. */
+function NeuerDealForm({
+  firma, pipelines, stagesFor, onSave, onCancel,
+}: {
+  firma: string | null;
+  pipelines: { id: string; name: string }[];
+  stagesFor: (pipelineId: string) => { id: string; name: string; is_won: boolean; is_lost: boolean }[];
+  onSave: (stageId: string, felder: { quelle: string; produkt: string; anlass: string | null; title: string | null }) => void;
+  onCancel: () => void;
+}) {
+  const [stageId, setStageId] = useState('');
+  const [quelle, setQuelle] = useState('');
+  const [produkt, setProdukt] = useState('');
+  const [anlass, setAnlass] = useState('');
+  const [title, setTitle] = useState('');
+  return (
+    <form className="mb-4 space-y-3 rounded-lg border border-line bg-surface-2/50 p-3"
+          onSubmit={(e) => { e.preventDefault(); onSave(stageId, { quelle, produkt, anlass: anlass || null, title: title || null }); }}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label">Phase<span className="text-lose"> *</span></label>
+          <select className="input" required value={stageId} onChange={(e) => setStageId(e.target.value)}>
+            <option value="" disabled>– bitte wählen –</option>
+            {pipelines.map((p) => (
+              <optgroup key={p.id} label={p.name}>
+                {stagesFor(p.id).filter((s) => !s.is_won && !s.is_lost).map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Name des Deals</label>
+          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={firma ?? 'Neuer Deal'} />
+        </div>
+        <div>
+          <label className="label">Quelle<span className="text-lose"> *</span></label>
+          <select className="input" required value={quelle} onChange={(e) => setQuelle(e.target.value)}>
+            <option value="" disabled>– bitte wählen –</option>
+            {QUELLEN.map((q) => <option key={q} value={q}>{q}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Produkt<span className="text-lose"> *</span></label>
+          <select className="input" required value={produkt} onChange={(e) => setProdukt(e.target.value)}>
+            <option value="" disabled>– bitte wählen –</option>
+            {PRODUKTE.map((q) => <option key={q} value={q}>{q}</option>)}
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Anlass</label>
+          <input className="input" list="anlaesse-neu" value={anlass} onChange={(e) => setAnlass(e.target.value)}
+                 placeholder="z. B. electronica 2026" />
+          <datalist id="anlaesse-neu">{ANLAESSE.map((a) => <option key={a} value={a} />)}</datalist>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button className="btn-primary !py-1.5 text-[13px]">Deal anlegen</button>
+        <button type="button" className="btn-ghost !py-1.5 text-[13px]" onClick={onCancel}>Abbrechen</button>
+      </div>
+    </form>
+  );
+}
 
 function Section({
   title, action, children, defaultOpen = true,
@@ -310,6 +376,7 @@ export default function DetailPanel({
   }, [onClose]);
 
   const [handover, setHandover] = useState<string | null>(null);
+  const [neuerDeal, setNeuerDeal] = useState(false);
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => { await fn(); await reload(); });
 
@@ -491,22 +558,24 @@ export default function DetailPanel({
 
                 if (key === 'deal_status') return (
                   <Section key={key} title="Deal-Status"
-                    action={mainDeal ? null : (
-                      data?.stages.length ? (
-                        <select className="input !w-auto !py-1.5 text-[13px]" defaultValue=""
-                                onChange={(e) => e.target.value && run(() => createDealForContact(contactId, e.target.value))}>
-                          <option value="">+ Deal anlegen in …</option>
-                          {data.pipelines.map((p) => (
-                            <optgroup key={p.id} label={p.name}>
-                              {stagesFor(p.id).filter((s) => !s.is_won && !s.is_lost).map((s) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      ) : null
+                    action={mainDeal || neuerDeal || !data?.stages.length ? null : (
+                      <button type="button" className="btn-ghost !py-1.5 text-[13px]" onClick={() => setNeuerDeal(true)}>
+                        + Deal anlegen
+                      </button>
                     )}
                   >
+                    {neuerDeal && data && (
+                      <NeuerDealForm
+                        firma={contact.company}
+                        pipelines={data.pipelines}
+                        stagesFor={stagesFor}
+                        onCancel={() => setNeuerDeal(false)}
+                        onSave={(stageId, felder) => run(async () => {
+                          await createDealForContact(contactId, stageId, felder);
+                          setNeuerDeal(false);
+                        })}
+                      />
+                    )}
                     {mainDeal ? (
                       <div className="grid gap-4 sm:grid-cols-2">
                         <SelectField label="Pipeline" required value={mainDeal.pipeline_id}
@@ -518,9 +587,18 @@ export default function DetailPanel({
                         <SelectField label="Deal-Phase" required value={mainDeal.stage_id}
                           options={stagesFor(mainDeal.pipeline_id).map((s) => ({ value: s.id, label: s.name }))}
                           onSave={(stageId) => run(() => setDealStage(mainDeal.id, stageId))} />
+                        <SelectField label="Quelle" value={mainDeal.custom?.quelle} placeholder="–"
+                          options={QUELLEN.map((q) => ({ value: q, label: q }))}
+                          onSave={(v) => run(() => updateDealCustom(mainDeal.id, 'quelle', v))} />
+                        <SelectField label="Produkt" value={mainDeal.custom?.produkt} placeholder="–"
+                          options={PRODUKTE.map((q) => ({ value: q, label: q }))}
+                          onSave={(v) => run(() => updateDealCustom(mainDeal.id, 'produkt', v))} />
+                        <Field label="Anlass" value={mainDeal.custom?.anlass ?? null} list="anlaesse-panel"
+                          onSave={(v) => run(() => updateDealCustom(mainDeal.id, 'anlass', v))} />
+                        <datalist id="anlaesse-panel">{ANLAESSE.map((a) => <option key={a} value={a} />)}</datalist>
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted">Noch kein Deal – oben rechts eine Phase wählen.</p>
+                    ) : neuerDeal ? null : (
+                      <p className="text-sm text-muted">Noch kein Deal – oben rechts „Deal anlegen“.</p>
                     )}
                   </Section>
                 );

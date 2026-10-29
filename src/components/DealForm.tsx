@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LEAD_SOURCES } from '@/lib/labels';
+import { QUELLEN, PRODUKTE, ANLAESSE } from '@/lib/dealfelder';
 import type { Contact, Profile, Stage } from '@/lib/types';
 import { contactName } from '@/lib/format';
 
@@ -72,6 +73,29 @@ export default function DealForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label" htmlFor="quelle">Quelle <span className="text-lose">*</span></label>
+          <select id="quelle" name="quelle" className="input" required defaultValue="">
+            <option value="" disabled>– bitte wählen –</option>
+            {QUELLEN.map((q) => <option key={q} value={q}>{q}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="produkt">Produkt <span className="text-lose">*</span></label>
+          <select id="produkt" name="produkt" className="input" required defaultValue="">
+            <option value="" disabled>– bitte wählen –</option>
+            {PRODUKTE.map((q) => <option key={q} value={q}>{q}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="anlass">Anlass</label>
+        <input id="anlass" name="anlass" className="input" list="anlaesse" placeholder="z. B. electronica 2026" />
+        <datalist id="anlaesse">{ANLAESSE.map((a) => <option key={a} value={a} />)}</datalist>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -212,7 +212,11 @@ export async function setDealStage(dealId: string, stageId: string) {
   refresh();
 }
 
-export async function createDealForContact(contactId: string, stageId: string) {
+export async function createDealForContact(
+  contactId: string, stageId: string,
+  felder: { quelle: string; produkt: string; anlass?: string | null; title?: string | null },
+) {
+  if (!felder.quelle?.trim() || !felder.produkt?.trim()) throw new Error('Quelle und Produkt sind Pflicht.');
   const { supabase, orgId, profile } = await ctx();
   const [{ data: stage }, { data: contact }] = await Promise.all([
     supabase.from('pipeline_stages').select('pipeline_id').eq('id', stageId).single(),
@@ -225,10 +229,14 @@ export async function createDealForContact(contactId: string, stageId: string) {
     contact_id: contactId,
     pipeline_id: stage.pipeline_id,
     stage_id: stageId,
-    title: contact?.company ?? 'Neuer Deal',
+    title: felder.title?.trim() || contact?.company || 'Neuer Deal',
     source: contact?.lead_source ?? null,
     owner_id: profile.id,
     setter_id: profile.id,
+    custom: {
+      quelle: felder.quelle.trim(), produkt: felder.produkt.trim(),
+      ...(felder.anlass?.trim() ? { anlass: felder.anlass.trim() } : {}),
+    },
   });
   if (error) throw new Error(error.message);
   refresh();

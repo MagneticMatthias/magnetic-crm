@@ -18,6 +18,7 @@ function refreshAll() {
 export async function createDeal(formData: FormData) {
   const { supabase, orgId, profile } = await ctx();
   const stageId = String(formData.get('stage_id'));
+  if (!str(formData, 'quelle') || !str(formData, 'produkt')) throw new Error('Quelle und Produkt sind Pflicht.');
 
   const { data: stage } = await supabase
     .from('pipeline_stages').select('pipeline_id').eq('id', stageId).single();
@@ -40,6 +41,8 @@ export async function createDeal(formData: FormData) {
     expected_close_date: str(formData, 'expected_close_date'),
     next_step: str(formData, 'next_step'),
     position: count ?? 0,
+    custom: Object.fromEntries(['quelle', 'produkt', 'anlass']
+      .map((k) => [k, str(formData, k)]).filter(([, v]) => v)),
   }).select('id').single();
   if (error) throw new Error(error.message);
 
