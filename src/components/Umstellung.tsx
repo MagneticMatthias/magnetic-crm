@@ -107,7 +107,8 @@ export default function Umstellung({ zeilen, fertig, ziele }: { zeilen: Vorschau
         <p className="mt-3 text-xs text-muted">
           Zusätzlich: Signal-Hinweis mit „electronica“ ergibt Produkt Messefilm und Anlass electronica 2026.
           Expo-Real-Bezug ergibt Anlass Expo Real 2026. Jede alte Phase wird als Notiz-Aktivität protokolliert.
-          Die Pipeline Fäden bekommt die Phase „Geliefert“.
+          Die Pipeline Fäden bekommt die Phase „Geliefert“. Firmen, die der Import vom 28.10. aus
+          „electronica 2026“ in die neue Liste verschoben hat, stehen danach wieder in beiden Listen.
         </p>
       </section>
 

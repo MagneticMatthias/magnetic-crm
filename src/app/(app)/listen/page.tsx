@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ctx } from '@/lib/ctx';
 import { PageHeader, Stat } from '@/components/ui';
 import { renameList, dealsFuerListeAnlegen } from '@/app/actions/listen';
+import { listenVonDeal, listenVonKontakt } from '@/lib/listen';
 import { FunnelBars } from '@/components/Charts';
 import { num, pct } from '@/lib/format';
 import { REACHED_OUTCOMES } from '@/lib/labels';
@@ -18,12 +19,19 @@ export default async function ListenPage({
   const { liste, p } = await searchParams;
   const { supabase, orgId } = await ctx();
 
-  const [{ data: pipelines }, { data: stages }, { data: deals }, { data: kontakte }] = await Promise.all([
+  const [{ data: pipelines }, { data: stages }, { data: deals }] = await Promise.all([
     supabase.from('pipelines').select('*').eq('org_id', orgId).eq('archived', false).order('position'),
     supabase.from('pipeline_stages').select('*').order('position'),
-    supabase.from('deals').select('id, source, stage_id, pipeline_id, status, contact_id').eq('org_id', orgId),
-    supabase.from('contacts').select('id, lead_source').eq('org_id', orgId).not('lead_source', 'is', null),
+    supabase.from('deals').select('id, source, stage_id, pipeline_id, status, contact_id').eq('org_id', orgId).range(0, 9999),
   ]);
+  // Kontakte seitenweise, damit auch mehr als 1000 Firmen zaehlen
+  const kontakte: { id: string; lead_source: string | null; custom: Record<string, string | null> | null }[] = [];
+  for (let von = 0; ; von += 1000) {
+    const { data } = await supabase.from('contacts').select('id, lead_source, custom').eq('org_id', orgId).range(von, von + 999);
+    kontakte.push(...((data ?? []) as typeof kontakte));
+    if (!data || data.length < 1000) break;
+  }
+  const kontaktVon = new Map(kontakte.map((k) => [k.id, k]));
 
   const pipelineList = (pipelines ?? []) as Pipeline[];
   const pipeline = pipelineList.find((x) => x.id === p)
@@ -37,20 +45,25 @@ export default async function ListenPage({
   const alle = ((deals ?? []) as Pick<Deal, 'id' | 'source' | 'stage_id' | 'pipeline_id' | 'status' | 'contact_id'>[])
     .filter((d) => d.pipeline_id === pipeline.id);
 
-  // Listen = Leadherkunft der Deals in dieser Pipeline
-  const listen = [...new Set(alle.map((d) => d.source || 'Ohne Liste'))].sort((a, b) => a.localeCompare(b, 'de'));
+  // Listen eines Deals: Herkunft des Deals plus alle Listen der Firma (eine Firma kann in mehreren stehen)
+  const listenVon = (d: { source: string | null; contact_id: string | null }) => {
+    const l = listenVonDeal({ source: d.source, contact: d.contact_id ? kontaktVon.get(d.contact_id) : null });
+    return l.length ? l : ['Ohne Liste'];
+  };
+  const listen = [...new Set(alle.flatMap(listenVon))].sort((a, b) => a.localeCompare(b, 'de'));
   // Firmen einer Liste ohne Deal in dieser Pipeline - tauchen sonst in keinem Deal-Filter auf
   const mitDealHier = new Set(alle.map((d) => d.contact_id));
   const ohneDeal = new Map<string, number>();
-  for (const k of kontakte ?? []) {
-    if (k.lead_source && k.lead_source !== 'Bestandskunde' && !mitDealHier.has(k.id)) {
-      ohneDeal.set(k.lead_source, (ohneDeal.get(k.lead_source) ?? 0) + 1);
+  for (const k of kontakte) {
+    if (mitDealHier.has(k.id)) continue;
+    for (const l of listenVonKontakt(k)) {
+      if (l !== 'Bestandskunde') ohneDeal.set(l, (ohneDeal.get(l) ?? 0) + 1);
     }
   }
   // Listen, die es nur als Kontakte gibt, gehoeren auch in die Auswahl
   const nurKontakte = [...ohneDeal.keys()].filter((l) => !listen.includes(l) && (deals ?? []).every((d) => d.source !== l));
   const aktiv = liste && (listen.includes(liste) || nurKontakte.includes(liste)) ? liste : null;
-  const rows = aktiv ? alle.filter((d) => (d.source || 'Ohne Liste') === aktiv) : alle;
+  const rows = aktiv ? alle.filter((d) => listenVon(d).includes(aktiv)) : alle;
 
   // Aktivitaeten zu diesen Deals
   const dealIds = rows.map((d) => d.id);
@@ -78,7 +91,7 @@ export default async function ListenPage({
 
   // Matrix Liste x Phase
   const matrix = listen.map((l) => {
-    const ds = alle.filter((d) => (d.source || 'Ohne Liste') === l);
+    const ds = alle.filter((d) => listenVon(d).includes(l));
     return { liste: l, gesamt: ds.length, je: stageList.map((s) => ds.filter((d) => d.stage_id === s.id).length) };
   });
 
@@ -105,7 +118,7 @@ export default async function ListenPage({
           </Link>
           {listen.map((l) => (
             <Link key={l} href={href({ liste: l })} className={aktiv === l ? 'btn-primary' : 'btn-ghost'}>
-              {l} <span className="ml-1 text-xs opacity-70">{alle.filter((d) => (d.source || 'Ohne Liste') === l).length}</span>
+              {l} <span className="ml-1 text-xs opacity-70">{alle.filter((d) => listenVon(d).includes(l)).length}</span>
             </Link>
           ))}
         </div>

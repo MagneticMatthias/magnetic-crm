@@ -1,5 +1,6 @@
 import { ctx } from '@/lib/ctx';
 import { nurPassendeFilter } from '@/lib/listenfilter';
+import { listenVonDeal } from '@/lib/listen';
 import { Empty } from '@/components/ui';
 import { istFaeden, ERLEDIGT_PHASEN } from '@/lib/faeden';
 import { eur } from '@/lib/format';
@@ -111,7 +112,7 @@ export default async function PipelinesPage({
         rows={rows}
         filter={def}
         savedFilters={nurPassendeFilter((saved ?? []) as SavedFilter[],
-          new Set(((deals ?? []) as DealWithContact[]).map((d) => d.source).filter((x): x is string => !!x)))}
+          new Set(((deals ?? []) as DealWithContact[]).flatMap((d) => listenVonDeal(d))))}
         contacts={(contacts ?? []) as ContactWithPersons[]}
         team={(team ?? []) as Profile[]}
         initialOpen={open ?? null}

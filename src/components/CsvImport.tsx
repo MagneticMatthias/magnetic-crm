@@ -158,7 +158,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
               </div>
             </div>
             <p className="mt-3 text-xs text-muted">
-              Firmen, die schon im CRM sind, werden nicht doppelt angelegt. Sie wandern in diese Liste, ihre Anrufe und Notizen bleiben erhalten.
+              Firmen, die schon im CRM sind, werden nicht doppelt angelegt. Sie stehen danach in ihrer alten und in dieser Liste, mit allen Anrufen und Notizen.
             </p>
           </section>
 
@@ -181,7 +181,7 @@ export default function CsvImport({ stageOptions }: { stageOptions: StageOption[
             {result && (
               <div className="mt-4 rounded-lg bg-win/10 p-4 text-sm">
                 <p className="flex items-center gap-2 font-medium text-win"><Check size={16} /> Import abgeschlossen</p>
-                <p className="mt-1">{result.created + result.moved} Firmen in der Liste · davon {result.created} neu und {result.moved} schon vorher im CRM{result.skipped ? ` · ${result.skipped} leere Zeilen übersprungen` : ''}</p>
+                <p className="mt-1">{result.created + result.moved} Firmen in der Liste · davon {result.created} neu und {result.moved} auch in einer anderen Liste{result.skipped ? ` · ${result.skipped} leere Zeilen übersprungen` : ''}</p>
                 {result.enriched.length > 0 && (
                   <p className="mt-1 text-muted">Signal ergänzt bei: {result.enriched.join(', ')}</p>
                 )}

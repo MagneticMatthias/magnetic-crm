@@ -1,4 +1,5 @@
 import { QUELLEN, PRODUKTE } from '@/lib/dealfelder';
+import { listenVonDeal, listenVonKontakt } from '@/lib/listen';
 import type {
   ContactWithPersons, DealWithContact, FilterDefinition, FilterOperator, FilterRule,
 } from './types';
@@ -12,7 +13,7 @@ export type FieldDef = {
   group: string;
   icon: 'text' | 'list' | 'mail' | 'phone' | 'date' | 'link' | 'number' | 'money';
   options?: string[];
-  get: (row: never) => string | number | null;
+  get: (row: never) => string | number | null | string[];
 };
 
 export const OPERATOR_LABEL: Record<FilterOperator, string> = {
@@ -70,8 +71,9 @@ export const CONTACT_FIELDS: FieldDef[] = [
     get: (r: ContactWithPersons) => r.company },
   { key: 'website', label: 'Website', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'link',
     get: (r: ContactWithPersons) => r.website },
-  { key: 'lead_source', label: 'Leadherkunft', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'text',
-    get: (r: ContactWithPersons) => r.lead_source },
+  // Alle Listen der Firma: eine Firma kann in mehreren Listen stehen
+  { key: 'lead_source', label: 'Leadherkunft / Liste', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'text',
+    get: (r: ContactWithPersons) => listenVonKontakt(r) },
   { key: 'city', label: 'Stadt', type: 'text', group: 'Adresse', icon: 'text',
     get: (r: ContactWithPersons) => r.city },
   { key: 'postal_code', label: 'Postleitzahl', type: 'text', group: 'Adresse', icon: 'text',
@@ -114,8 +116,8 @@ export const DEAL_FIELDS: FieldDef[] = [
     get: (r: DealWithContact) => r.title },
   { key: 'value', label: 'Dealwert', type: 'number', group: 'Deal-Eigenschaften', icon: 'money',
     get: (r: DealWithContact) => Number(r.value ?? 0) },
-  { key: 'source', label: 'Leadherkunft', type: 'text', group: 'Deal-Eigenschaften', icon: 'text',
-    get: (r: DealWithContact) => r.source },
+  { key: 'source', label: 'Leadherkunft / Liste', type: 'text', group: 'Deal-Eigenschaften', icon: 'text',
+    get: (r: DealWithContact) => listenVonDeal(r) },
   { key: 'next_step', label: 'Nächster Schritt', type: 'text', group: 'Deal-Eigenschaften', icon: 'text',
     get: (r: DealWithContact) => r.next_step },
   { key: 'deal.quelle', label: 'Quelle', type: 'select', group: 'Deal-Eigenschaften', icon: 'list',
@@ -145,7 +147,7 @@ export const DEAL_FIELDS: FieldDef[] = [
   { key: 'phone', label: 'Telefon', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'phone',
     get: (r: DealWithContact) => primary(r.contact)?.phone ?? null },
   { key: 'lead_source', label: 'Leadherkunft (Kontakt)', type: 'text', group: 'Kontakt-Eigenschaften', icon: 'text',
-    get: (r: DealWithContact) => r.contact?.lead_source ?? null },
+    get: (r: DealWithContact) => listenVonKontakt(r.contact) },
   { key: 'country', label: 'Land', type: 'select', group: 'Adresse', icon: 'list',
     options: ['Deutschland', 'Österreich', 'Schweiz'],
     get: (r: DealWithContact) => r.contact?.country ?? null },
@@ -181,7 +183,16 @@ function matchRule(row: unknown, rule: FilterRule, fields: FieldDef[]): boolean 
   const field = fields.find((f) => f.key === rule.field);
   if (!field) return true;
 
-  const raw = (field.get as (r: unknown) => string | number | null)(row);
+  const roh = (field.get as (r: unknown) => string | number | null | string[])(row);
+  // Mehrere Werte (z. B. Listen einer Firma): eine Regel gilt, wenn ein Wert passt
+  if (Array.isArray(roh)) {
+    if (rule.operator === 'is_empty') return roh.length === 0;
+    if (rule.operator === 'not_empty') return roh.length > 0;
+    if (rule.operator === 'neq') return !roh.some((v) => norm(v) === norm(rule.value));
+    if (rule.operator === 'not_contains') return !roh.some((v) => norm(v).includes(norm(rule.value)));
+    return roh.some((v) => matchRule({ v }, rule, [{ ...field, get: (x: { v: string }) => x.v } as FieldDef]));
+  }
+  const raw = roh;
   const empty = raw === null || raw === undefined || String(raw).trim() === '';
 
   switch (rule.operator) {

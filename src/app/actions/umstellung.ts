@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { ctx } from '@/lib/ctx';
+import { LISTEN_TRENNER } from '@/lib/listen';
 import {
   KALT_PHASEN, FAEDEN_PHASEN, regelFuerPhase, norm, type Regel,
 } from '@/lib/umstellung';
@@ -217,6 +218,8 @@ export async function umstellungAusfuehren(zuordnung: Record<string, string>): P
     if (!count) await supabase.from('pipeline_stages').delete().eq('id', st.id);
   }
 
+  await listenZurueckholen(supabase, orgId);
+
   revalidatePath('/', 'layout');
   return uebersichtBerechnen(supabase, kalt.id, faeden.id, updates.filter((u) => u.patch.pipeline_id === faeden.id).length);
 }
@@ -242,4 +245,27 @@ async function uebersichtBerechnen(supabase: Db, kaltId: string, faedenId: strin
     angenommen: fDeals.filter((d) => d.stage_id === angenommenId)
       .map((d) => ({ id: d.id, title: d.title, firma: d.contact?.company ?? null, betrag: Number(d.value || 0) })),
   };
+}
+
+/**
+ * Einmalige Reparatur: Der Import vom 28.10.26 hat Firmen aus "electronica 2026"
+ * in die neue Signal-Liste verschoben. Firmen und Deals, die vor dem 28.10.
+ * angelegt wurden, stehen danach wieder in "electronica 2026" - und zusaetzlich
+ * in der Signal-Liste.
+ */
+async function listenZurueckholen(supabase: Db, orgId: string) {
+  const ALT = 'electronica 2026';
+  const STICHTAG = '2026-10-28T00:00:00Z';
+  const kontakte = await alle<{ id: string; lead_source: string | null; custom: Record<string, string | null> | null }>(() =>
+    supabase.from('contacts').select('id, lead_source, custom').eq('org_id', orgId)
+      .ilike('lead_source', '%28.10.26%').lt('created_at', STICHTAG));
+  for (const k of kontakte) {
+    const neu = k.lead_source!;
+    const listen = [...new Set([ALT, neu, ...String(k.custom?.listen ?? '').split('|').map((x) => x.trim()).filter(Boolean)])];
+    await supabase.from('contacts').update({
+      lead_source: ALT, custom: { ...(k.custom ?? {}), messe: ALT, listen: listen.join(LISTEN_TRENNER) },
+    }).eq('id', k.id);
+  }
+  await supabase.from('deals').update({ source: ALT }).eq('org_id', orgId)
+    .ilike('source', '%28.10.26%').lt('created_at', STICHTAG);
 }

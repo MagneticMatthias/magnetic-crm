@@ -1,5 +1,6 @@
 import { ctx } from '@/lib/ctx';
 import { nurPassendeFilter } from '@/lib/listenfilter';
+import { listenVonKontakt } from '@/lib/listen';
 import ContactsView from '@/components/ContactsView';
 import { applyFilter, CONTACT_FIELDS, parseFilterParam } from '@/lib/filters';
 import type { ContactWithPersons, SavedFilter, Stage } from '@/lib/types';
@@ -22,7 +23,7 @@ export default async function ContactsPage({
     // in der Kontaktliste direkt umstellen. Die Zeilensicherheit begrenzt
     // das bereits auf die eigene Organisation.
     supabase.from('pipeline_stages').select('*').order('position'),
-    supabase.from('contacts').select('lead_source').eq('org_id', orgId).not('lead_source', 'is', null),
+    supabase.from('contacts').select('lead_source, custom').eq('org_id', orgId),
   ]);
 
   let rows = (contacts ?? []) as ContactWithPersons[];
@@ -52,7 +53,7 @@ export default async function ContactsPage({
         rows={rows}
         filter={def}
         savedFilters={nurPassendeFilter((saved ?? []) as SavedFilter[],
-          new Set((quellen ?? []).map((c) => c.lead_source as string)))}
+          new Set((quellen ?? []).flatMap((c) => listenVonKontakt(c as { lead_source: string | null; custom: Record<string, string | null> | null }))))}
         stages={(stages ?? []) as Stage[]}
         initialOpen={open ?? null}
       />

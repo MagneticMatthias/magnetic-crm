@@ -5,6 +5,7 @@ import { ctx } from '@/lib/ctx';
 import type { ImportFieldKey } from '@/lib/csv';
 import { firmKey, firmenName, landName, ortUndRegion, prioAusSignal } from '@/lib/import-helpers';
 import { listeVonFilter } from '@/lib/listenfilter';
+import { listeHinzu } from '@/lib/listen';
 
 export type ImportRow = Partial<Record<ImportFieldKey, string>>;
 
@@ -53,7 +54,7 @@ export async function importRows(input: {
 
   // Bestehende Kontakte fuer die Dublettenpruefung laden
   const [{ data: existing }, { data: persons }] = await Promise.all([
-    supabase.from('contacts').select('id, company, website, custom').eq('org_id', orgId),
+    supabase.from('contacts').select('id, company, website, custom, lead_source').eq('org_id', orgId),
     supabase.from('contact_persons').select('contact_id, email').eq('org_id', orgId),
   ]);
   const byCompany = new Map<string, string>();
@@ -61,7 +62,9 @@ export async function importRows(input: {
   const byEmail = new Map<string, string>();
   const byKey = new Map<string, string>();
   const customOf = new Map<string, Record<string, string | null>>();
+  const leadOf = new Map<string, string | null>();
   (existing ?? []).forEach((c) => {
+    leadOf.set(c.id, c.lead_source ?? null);
     customOf.set(c.id, (c.custom ?? {}) as Record<string, string | null>);
     if (c.company) { byCompany.set(norm(c.company), c.id); byKey.set(firmKey(c.company), c.id); }
     if (c.website) byDomain.set(normDomain(c.website), c.id);
@@ -86,6 +89,7 @@ export async function importRows(input: {
       const custom: Record<string, string> = {};
       const setze = (k: string, v: string | null) => { if (v) custom[k] = v; };
       setze('messe', input.leadSource);
+      setze('listen', input.leadSource);
       setze('prio', t(row.prio) ?? prioAusSignal(signalstaerke));
       setze('kanal', t(row.kanal)?.toUpperCase() ?? null);
       setze('halle_stand', t(row.halle_stand));
@@ -119,24 +123,26 @@ export async function importRows(input: {
         const neu: Record<string, string | null> = { ...alt };
         const ersetzen = input.duplicates === 'replace';
         for (const [k, v] of Object.entries(custom)) {
-          if (k === 'messe' && !ersetzen) continue; // beim Ergaenzen bleibt die Firma in ihrer Liste
+          if (k === 'messe' || k === 'listen') continue; // die urspruengliche Liste bleibt erhalten
           if (ersetzen || k.startsWith('signal') || !neu[k]) neu[k] = v;
         }
         if (ersetzen) {
+          // Die Firma steht danach in beiden Listen
+          neu.listen = listeHinzu({ lead_source: leadOf.get(dupId) ?? null, custom: alt }, input.leadSource);
           await supabase.from('contacts').update({
-            custom: neu, lead_source: input.leadSource,
+            custom: neu,
             ...(ortInfo.ort ? { city: ortInfo.ort } : {}),
             ...(landName(row.country) ? { country: landName(row.country) } : {}),
             ...(website ? { website } : {}),
           }).eq('id', dupId);
           customOf.set(dupId, neu);
-          // Deals der Firma in die neue Liste holen (in der gewaehlten Pipeline, sonst alle offenen)
+          // Deals der Firma: Prio/Kanal aktualisieren, die Herkunft des Deals bleibt
           let q = supabase.from('deals').select('id, custom').eq('contact_id', dupId);
           q = pipelineId ? q.eq('pipeline_id', pipelineId) : q.eq('status', 'offen');
           const { data: deals } = await q;
           const dealCustom = { ...(custom.prio ? { prio: custom.prio } : {}), ...(custom.kanal ? { kanal: custom.kanal } : {}) };
           for (const d of deals ?? []) {
-            await supabase.from('deals').update({ source: input.leadSource, custom: { ...(d.custom ?? {}), ...dealCustom } }).eq('id', d.id);
+            await supabase.from('deals').update({ custom: { ...(d.custom ?? {}), ...dealCustom } }).eq('id', d.id);
           }
           if (!deals?.length && input.stageId && pipelineId) {
             const { error: dErr } = await supabase.from('deals').insert({
@@ -259,11 +265,12 @@ async function verwaisteListenFilterLoeschen(
   const listeVon = (f: FilterZeile) => listeVonFilter(f);
   const kandidaten = [...new Set(filter.map(listeVon).filter((v): v is string => !!v))];
   for (const liste of kandidaten) {
-    const [{ count: d }, { count: k }] = await Promise.all([
+    const [{ count: d }, { count: k }, { count: m }] = await Promise.all([
       supabase.from('deals').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('source', liste),
       supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('lead_source', liste),
+      supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('org_id', orgId).ilike('custom->>listen', `%${liste}%`),
     ]);
-    if ((d ?? 0) === 0 && (k ?? 0) === 0) {
+    if ((d ?? 0) === 0 && (k ?? 0) === 0 && (m ?? 0) === 0) {
       const ids = filter.filter((f) => listeVon(f) === liste).map((f) => f.id);
       if (ids.length) await supabase.from('saved_filters').delete().in('id', ids);
     }

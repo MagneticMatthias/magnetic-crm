@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ctx } from '@/lib/ctx';
+import { LISTEN_TRENNER, listenVonKontakt } from '@/lib/listen';
 
 type Bedingung = { field: string; operator: string; value: unknown };
 type Definition = { groups?: Bedingung[][] };
@@ -28,10 +29,16 @@ export async function renameList(formData: FormData) {
   const { error: cErr } = await supabase.from('contacts').update({ lead_source: neu }).eq('org_id', orgId).eq('lead_source', alt);
   if (cErr) throw new Error(cErr.message);
 
-  const { data: mitMesse } = await supabase.from('contacts').select('id, custom')
-    .eq('org_id', orgId).eq('custom->>messe', alt);
-  for (const c of mitMesse ?? []) {
-    await supabase.from('contacts').update({ custom: { ...(c.custom ?? {}), messe: neu } }).eq('id', c.id);
+  // Zusatzfelder "Messe" und "Listen" (eine Firma kann in mehreren Listen stehen)
+  const { data: betroffen } = await supabase.from('contacts').select('id, custom')
+    .eq('org_id', orgId).or(`custom->>messe.eq.${JSON.stringify(alt)},custom->>listen.ilike.${JSON.stringify(`%${alt}%`)}`);
+  for (const c of betroffen ?? []) {
+    const cu = { ...((c.custom ?? {}) as Record<string, string | null>) };
+    if (cu.messe === alt) cu.messe = neu;
+    if (cu.listen) {
+      cu.listen = [...new Set(cu.listen.split('|').map((x) => x.trim()).filter(Boolean).map((x) => (x === alt ? neu : x)))].join(LISTEN_TRENNER);
+    }
+    await supabase.from('contacts').update({ custom: cu }).eq('id', c.id);
   }
 
   // Gespeicherte Filter: Name ("electronica 2026 · Prio 1") und Bedingungen anpassen
@@ -69,7 +76,8 @@ export async function dealsFuerListeAnlegen(formData: FormData) {
 
   const [{ data: stages }, { data: kontakte }, { data: deals }] = await Promise.all([
     supabase.from('pipeline_stages').select('id, name, position, is_won, is_lost').eq('pipeline_id', pipelineId).order('position'),
-    supabase.from('contacts').select('id, company, custom').eq('org_id', orgId).eq('lead_source', liste),
+    supabase.from('contacts').select('id, company, custom, lead_source').eq('org_id', orgId)
+      .or(`lead_source.eq.${JSON.stringify(liste)},custom->>listen.ilike.${JSON.stringify(`%${liste}%`)}`),
     supabase.from('deals').select('id, contact_id, pipeline_id, source, status').eq('org_id', orgId),
   ]);
   const offen = (stages ?? []).filter((s) => !s.is_won && !s.is_lost);
@@ -77,7 +85,7 @@ export async function dealsFuerListeAnlegen(formData: FormData) {
   if (!start) throw new Error('Die Pipeline hat keine offene Phase.');
 
   const alle = deals ?? [];
-  for (const k of kontakte ?? []) {
+  for (const k of (kontakte ?? []).filter((x) => listenVonKontakt(x).includes(liste))) {
     if (alle.some((d) => d.contact_id === k.id && d.pipeline_id === pipelineId)) continue;
     const woanders = alle.find((d) => d.contact_id === k.id && d.status === 'offen' && d.source === liste);
     if (woanders) {
