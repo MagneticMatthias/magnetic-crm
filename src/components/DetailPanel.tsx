@@ -494,7 +494,7 @@ export default function DetailPanel({
             {([
               { key: 'info', label: 'Kontakt-Info', icon: User },
               { key: 'activities', label: 'Aktivitäten', icon: ListChecks },
-              { key: 'notes', label: `Notizen (${data?.notes.length ?? 0})`, icon: NotebookPen },
+              { key: 'notes', label: `Dauerhafte Notizen zum Deal (${data?.notes.length ?? 0})`, icon: NotebookPen },
             ] as { key: Tab; label: string; icon: typeof User }[]).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -819,6 +819,8 @@ export default function DetailPanel({
                 dealId={mainDeal?.id}
                 stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
                 phone={primary?.phone}
+                quelle={mainDeal?.custom?.quelle ?? null}
+                key={mainDeal?.id ?? 'ohne'}
               />
               <Timeline activities={data?.activities ?? []} editable onChanged={reload} wiedervorlagen={data?.wiedervorlagen}
                         stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined} />

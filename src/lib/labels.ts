@@ -37,7 +37,7 @@ export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
 
 export const CALL_KIND_LABEL: Record<CallKind, string> = {
   opening: 'Opening Call',
-  setting: 'Setting Call',
+  setting: 'Erstanruf',
   closing: 'Closing Call',
   followup: 'Follow-up Call',
 };
@@ -73,3 +73,8 @@ export const DIAL_CODES = [
   { code: '+43', flag: '🇦🇹', label: 'Österreich' },
   { code: '+41', flag: '🇨🇭', label: 'Schweiz' },
 ];
+
+/** Ergebnis bei LinkedIn und E-Mail (steht vorne im Betreff der Aktivitaet). */
+export const NACHRICHT_ERGEBNIS = [
+  'Nachricht gesendet', 'Antwort positiv', 'Antwort negativ', 'Keine Antwort', 'Termin vereinbart',
+] as const;

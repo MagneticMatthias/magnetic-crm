@@ -121,6 +121,14 @@ type Db = Awaited<ReturnType<typeof ctx>>['supabase'];
  * Laufzeit umbenannt werden koennen - passt keiner, passiert nichts.
  */
 function phaseAusAktivitaet(formData: FormData, type: string): string[] {
+  // LinkedIn und E-Mail mit ausdruecklichem Ergebnis
+  const ergebnis = str(formData, 'ergebnis');
+  if ((type === 'linkedin' || type === 'email') && ergebnis) {
+    if (ergebnis === 'Nachricht gesendet') return type === 'linkedin' ? ['LinkedIn angeschrieben', 'Angeschrieben'] : ['E-Mail geschrieben', 'Angeschrieben'];
+    if (ergebnis === 'Antwort positiv' || ergebnis === 'Termin vereinbart') return ['Interesse'];
+    if (ergebnis === 'Antwort negativ') return [VERLOREN_AUSDRUECKLICH];
+    return []; // Keine Antwort: Phase bleibt
+  }
   if (type === 'linkedin') return ['LinkedIn angeschrieben', 'Angeschrieben'];
   // E-Mail bewusst NICHT: von Hand protokolliert steht nicht fest, wer
   // geschrieben hat, und eine eingehende Absage ist nicht "E-Mail
@@ -132,10 +140,10 @@ function phaseAusAktivitaet(formData: FormData, type: string): string[] {
   if (wer === 'entscheider') return ['Entscheider erreicht'];
   if (wer === 'gatekeeper') return ['Gatekeeper erreicht'];
 
-  const ergebnis = str(formData, 'outcome');
-  if (ergebnis === 'nicht_erreicht' || ergebnis === 'mailbox') return ['Niemand rangegangen'];
-  if (ergebnis === 'wiedervorlage') return ['Nochmal anrufen'];
-  if (ergebnis === 'kein_interesse') return ['Entscheider kein Interesse'];
+  const outcome = str(formData, 'outcome');
+  if (outcome === 'nicht_erreicht' || outcome === 'mailbox') return ['Niemand rangegangen'];
+  if (outcome === 'wiedervorlage') return ['Nochmal anrufen'];
+  if (outcome === 'kein_interesse') return ['Entscheider kein Interesse'];
   return [];
 }
 
@@ -145,8 +153,13 @@ function phaseAusAktivitaet(formData: FormData, type: string): string[] {
  * Phasen werden nie automatisch gesetzt. Damit kann ein nachtraeglich
  * erfasster Anruf keinen weit fortgeschrittenen Deal zurueckwerfen.
  */
+/** Markierung: "Antwort negativ" darf ausdruecklich auf Verloren setzen. */
+const VERLOREN_AUSDRUECKLICH = '__verloren__';
+
 export async function phaseNachziehen(supabase: Db, dealId: string, namen: string[]) {
   if (!namen.length) return;
+  const verlorenErlaubt = namen.includes(VERLOREN_AUSDRUECKLICH);
+  if (verlorenErlaubt) namen = ['Verloren'];
 
   const { data: deal } = await supabase
     .from('deals').select('pipeline_id, stage_id, status').eq('id', dealId).single();
@@ -159,7 +172,7 @@ export async function phaseNachziehen(supabase: Db, dealId: string, namen: strin
 
   const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   const ziel = stages.find((s) => namen.some((n) => gleich(s.name, n)));
-  if (!ziel || ziel.is_won || ziel.is_lost) return;
+  if (!ziel || ziel.is_won || (ziel.is_lost && !verlorenErlaubt)) return;
 
   const jetzt = stages.find((s) => s.id === deal.stage_id);
   if (jetzt && jetzt.position >= ziel.position) return;
@@ -221,7 +234,11 @@ export async function logActivity(formData: FormData) {
       : null,
     answered_by: type === 'call' ? str(formData, 'answered_by') : null,
     phone_number: str(formData, 'phone_number'),
-    subject: str(formData, 'subject'),
+    subject: (() => {
+      const e = str(formData, 'ergebnis');
+      const b = str(formData, 'subject');
+      return e && (type === 'linkedin' || type === 'email') ? [e, b].filter(Boolean).join(' · ') : b;
+    })(),
     body: str(formData, 'body'),
     occurred_at: (() => {
       const d = str(formData, 'date'); const t = str(formData, 'time');
