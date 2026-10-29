@@ -30,6 +30,14 @@ const Muted = ({ children }: { children: ReactNode }) =>
  * Direkt in der Zeile, damit die Recherche vor dem Anruf ein Klick ist.
  * Beide stoppen den Klick, sonst ginge zusaetzlich die Detailansicht auf.
  */
+/** "Beck GmbH & Co. KG" -> "Beck": LinkedIn-Profile nennen die Firma meist ohne Rechtsform */
+const ohneRechtsform = (name: string) => name
+  .replace(/\(.*?\)/g, ' ')
+  .replace(/\b(gmbh|mbh|ag|se|kg|kgaa|ohg|ug|e\.\s?k\.?|co\.?|haftungsbeschränkt|holding|group|gruppe)\b/gi, ' ')
+  .replace(/[&+,]/g, ' ').replace(/\s\.+(?=\s|$)/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim() || name;
+
 const Firma = ({ name }: { name: string | null | undefined }) => {
   if (!name) return <span className="text-muted">–</span>;
   return (
@@ -41,7 +49,7 @@ const Firma = ({ name }: { name: string | null | undefined }) => {
           <LinkedInIcon size={13} />
         </a>
         {/* Personen dieser Firma mit "Marketing" in der Position */}
-        <a href={`https://www.linkedin.com/search/results/people/?company=${encodeURIComponent(name)}&titleFreeText=Marketing`}
+        <a href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`Marketing ${ohneRechtsform(name)}`)}&origin=GLOBAL_SEARCH_HEADER`}
            target="_blank" rel="noreferrer noopener" title="Marketing-Leute dieser Firma auf LinkedIn" aria-label="Marketing-Leute auf LinkedIn suchen"
            className="grid h-6 w-6 place-items-center rounded-md text-muted/60 transition hover:bg-surface-2 hover:text-[#0a66c2]">
           <UserSearch size={13} />
