@@ -55,21 +55,35 @@ function HeaderCell<T>({
   const marke = isOver && !isDragging ? (activeIndex > index ? 'left' : 'right') : null;
   const active = sort?.key === col.key;
 
-  const startResize = (e: React.PointerEvent) => {
+  // Waehrend des Ziehens nur diese Spalte live anpassen; gespeichert wird beim Loslassen.
+  // Vorher wurde bei jeder Mausbewegung die ganze Tabelle neu gezeichnet - das ruckelte.
+  const [live, setLive] = useState<number | null>(null);
+  const breite = live ?? width;
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    const griff = e.currentTarget;
+    griff.setPointerCapture(e.pointerId);
     const startX = e.clientX;
     const startW = width;
-    const move = (ev: PointerEvent) => onResize(Math.max(MIN_W, startW + ev.clientX - startX));
-    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+    let aktuell = startW;
+    const move = (ev: PointerEvent) => { aktuell = Math.max(MIN_W, startW + ev.clientX - startX); setLive(aktuell); };
+    const up = () => {
+      griff.removeEventListener('pointermove', move);
+      griff.removeEventListener('pointerup', up);
+      griff.removeEventListener('pointercancel', up);
+      setLive(null);
+      if (aktuell !== startW) onResize(aktuell);
+    };
+    griff.addEventListener('pointermove', move);
+    griff.addEventListener('pointerup', up);
+    griff.addEventListener('pointercancel', up);
   };
 
   return (
     <th
       ref={setNodeRef}
-      style={{ width, minWidth: width, maxWidth: width, opacity: isDragging ? 0.35 : 1 }}
+      style={{ width: breite, minWidth: breite, maxWidth: breite, opacity: isDragging ? 0.35 : 1 }}
       className="group relative select-none px-0 py-0 text-left"
     >
       {marke && <span className={`absolute inset-y-1 ${marke === 'left' ? 'left-0' : 'right-0'} w-0.5 rounded bg-brand`} />}
@@ -86,9 +100,12 @@ function HeaderCell<T>({
           {active && (sort!.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
         </button>
       </div>
-      <div onPointerDown={startResize}
-           className="absolute right-0 top-0 h-full w-2 cursor-col-resize border-r border-transparent hover:border-brand"
-           title="Breite ändern" />
+      {/* Griff zum Breite-Aendern: breite Fangflaeche, immer sichtbare Trennlinie */}
+      <div onPointerDown={startResize} onClick={(e) => e.stopPropagation()}
+           className="group/griff absolute -right-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center"
+           title="Ziehen, um die Breite zu ändern">
+        <span className={`my-2 w-px transition-colors ${live !== null ? 'w-0.5 bg-brand' : 'bg-line group-hover/griff:w-0.5 group-hover/griff:bg-brand'}`} />
+      </div>
     </th>
   );
 }
