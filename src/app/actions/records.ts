@@ -223,6 +223,25 @@ export async function setDealStage(dealId: string, stageId: string) {
   refresh();
 }
 
+/**
+ * Deal ohne Kontakt (z. B. direkt in der Pipeline angelegt): Kontakt mit dem
+ * Deal-Namen als Firma anlegen und verknuepfen, damit sich der Deal oeffnen laesst.
+ */
+export async function kontaktFuerDeal(dealId: string): Promise<string> {
+  const { supabase, orgId, profile } = await ctx();
+  const { data: deal } = await supabase.from('deals').select('contact_id, title, source').eq('id', dealId).single();
+  if (!deal) throw new Error('Deal nicht gefunden');
+  if (deal.contact_id) return deal.contact_id;
+  const firma = String(deal.title ?? 'Neuer Kontakt').split(/\s+[–-]\s+|\s·\s/)[0].trim() || 'Neuer Kontakt';
+  const { data: neu, error } = await supabase.from('contacts').insert({
+    org_id: orgId, company: firma, lead_source: deal.source ?? null, owner_id: profile.id, created_by: profile.id,
+  }).select('id').single();
+  if (error || !neu) throw new Error(error?.message ?? 'Kontakt konnte nicht angelegt werden');
+  await supabase.from('deals').update({ contact_id: neu.id }).eq('id', dealId);
+  refresh();
+  return neu.id;
+}
+
 /** Tabelle: "Was ist passiert?" - Aktivitaet anlegen, Phase und Quelle setzen. */
 export async function wasIstPassiert(dealId: string, eintrag: string): Promise<{ wiedervorlage: boolean }> {
   const { supabase, orgId, profile } = await ctx();

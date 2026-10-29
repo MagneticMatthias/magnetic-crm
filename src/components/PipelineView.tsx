@@ -16,7 +16,7 @@ import PanelConfigurator from '@/components/PanelConfigurator';
 import { Modal } from '@/components/ui';
 import DealForm from '@/components/DealForm';
 import { DEAL_FIELDS } from '@/lib/filters';
-import { saveFilter, deleteDeals } from '@/app/actions/records';
+import { saveFilter, deleteDeals, kontaktFuerDeal } from '@/app/actions/records';
 import { useViewing } from '@/lib/presence';
 import { createDeal, reorderStages } from '@/app/actions/crm';
 import type {
@@ -153,7 +153,12 @@ export default function PipelineView({
         filter={filter}
         savedFilters={savedFilters}
         onSaveFilter={(name, def) => saveFilter('deals', name, def)}
-        onRowClick={(row) => row.contact_id && setOpen({ contactId: row.contact_id, dealId: row.id })}
+        onRowClick={async (row) => {
+          if (row.contact_id) { setOpen({ contactId: row.contact_id, dealId: row.id }); return; }
+          // Deal ohne Kontakt: Kontakt anlegen, dann oeffnen
+          const contactId = await kontaktFuerDeal(row.id);
+          setOpen({ contactId, dealId: row.id });
+        }}
         onDeleteSelected={deleteDeals}
         deleteLabel="Deals"
         activeId={null}
