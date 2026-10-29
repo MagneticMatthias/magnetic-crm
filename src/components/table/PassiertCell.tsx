@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { usePipelineArt } from './StagesContext';
-import { KALT_EINTRAEGE, FAEDEN_EINTRAEGE } from '@/lib/passiert';
+import { KALT_EINTRAEGE, FAEDEN_EINTRAEGE, wiedervorlageTage } from '@/lib/passiert';
 import { wasIstPassiert, wiedervorlageSetzen } from '@/app/actions/records';
 
 const inTagen = (n: number) => {
@@ -33,7 +33,7 @@ export default function PassiertCell({ dealId }: { dealId: string }) {
     try {
       const r = await wasIstPassiert(dealId, eintrag);
       setFertig(eintrag);
-      if (r.wiedervorlage) { setDatum(inTagen(3)); setBetreff(''); setWv(true); }
+      if (r.wiedervorlage) { setDatum(inTagen(wiedervorlageTage(eintrag))); setBetreff(''); setWv(true); }
     } catch (e) { setFehler(e instanceof Error ? e.message : 'Fehler'); }
   });
 

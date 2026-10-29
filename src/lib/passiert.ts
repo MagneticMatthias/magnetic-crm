@@ -5,7 +5,7 @@
 export const KALT_EINTRAEGE = [
   'InMail gesendet', 'Kontaktanfrage gesendet', 'E-Mail gesendet',
   'Angerufen, nicht erreicht', 'Angerufen, erreicht',
-  'Antwort: Interesse', 'Antwort: kein Interesse', 'Kein Kontakt möglich',
+  'Antwort: Interesse', 'Antwort: nicht jetzt', 'Antwort: kein Interesse', 'Kein Kontakt möglich',
 ] as const;
 
 export const FAEDEN_EINTRAEGE = [
@@ -13,12 +13,15 @@ export const FAEDEN_EINTRAEGE = [
 ] as const;
 
 /** Ergebnis im Aktivitaeten-Formular, passend zum Kanal */
-export const ERGEBNIS_LINKEDIN = ['InMail gesendet', 'Kontaktanfrage gesendet', 'Antwort: Interesse', 'Antwort: kein Interesse', 'Kein Kontakt möglich'] as const;
-export const ERGEBNIS_EMAIL = ['E-Mail gesendet', 'Antwort: Interesse', 'Antwort: kein Interesse', 'Kein Kontakt möglich'] as const;
+export const ERGEBNIS_LINKEDIN = ['InMail gesendet', 'Kontaktanfrage gesendet', 'Antwort: Interesse', 'Antwort: nicht jetzt', 'Antwort: kein Interesse', 'Kein Kontakt möglich'] as const;
+export const ERGEBNIS_EMAIL = ['E-Mail gesendet', 'Antwort: Interesse', 'Antwort: nicht jetzt', 'Antwort: kein Interesse', 'Kein Kontakt möglich'] as const;
+export const NICHT_JETZT = 'Antwort: nicht jetzt';
+/** Vorgabe fuer die Wiedervorlage in Tagen */
+export const wiedervorlageTage = (eintrag: string) => (eintrag === NICHT_JETZT ? 90 : 3);
 
 export type PassiertRegel = {
   type: 'linkedin' | 'email' | 'call' | 'note';
-  outcome?: 'erreicht' | 'nicht_erreicht' | 'kein_interesse';
+  outcome?: 'erreicht' | 'nicht_erreicht' | 'kein_interesse' | 'wiedervorlage';
   /** Name der neuen Phase; null = Phase bleibt */
   phase: string | null;
   /** Quelle, falls am Deal noch leer */
@@ -45,6 +48,10 @@ export function passiertRegel(eintrag: string, quelle?: string | null): Passiert
     case 'Antwort: Interesse': {
       const t = kanal(quelle);
       return { type: t, ...(t === 'call' ? { outcome: 'erreicht' as const } : {}), phase: 'Interesse', wiedervorlage: true };
+    }
+    case 'Antwort: nicht jetzt': {
+      const t = kanal(quelle);
+      return { type: t, ...(t === 'call' ? { outcome: 'wiedervorlage' as const } : {}), phase: 'Antwort erhalten', wiedervorlage: true };
     }
     case 'Antwort: kein Interesse': {
       const t = kanal(quelle);

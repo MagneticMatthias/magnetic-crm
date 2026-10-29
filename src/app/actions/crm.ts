@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { istFaeden } from '@/lib/faeden';
 import { nachPhasenwechsel, passiertAnwenden } from '@/lib/phasenwechsel';
-import { passiertRegel } from '@/lib/passiert';
+import { passiertRegel, NICHT_JETZT } from '@/lib/passiert';
 import { redirect } from 'next/navigation';
 import { ctx, str, numOrZero } from '@/lib/ctx';
 
@@ -208,6 +208,12 @@ export async function logActivity(formData: FormData) {
   const minutes = Number(str(formData, 'duration_minutes') ?? 0);
   const contactId = str(formData, 'contact_id');
   const dealId = str(formData, 'deal_id');
+  // "Antwort: nicht jetzt" im Anruf-Reiter: gespeichert als Ergebnis Wiedervorlage
+  const anrufNichtJetzt = type === 'call' && str(formData, 'outcome') === NICHT_JETZT;
+  if (anrufNichtJetzt) formData.set('ergebnis', NICHT_JETZT);
+  if (str(formData, 'ergebnis') === NICHT_JETZT && !str(formData, 'followup_at')) {
+    throw new Error('Bei „Antwort: nicht jetzt“ ist die Wiedervorlage Pflicht.');
+  }
 
   const { data: neu, error } = await supabase.from('activities').insert({
     org_id: orgId,
@@ -216,7 +222,7 @@ export async function logActivity(formData: FormData) {
     user_id: profile.id,
     type,
     call_kind: type === 'call' ? str(formData, 'call_kind') : null,
-    outcome: type === 'call' ? str(formData, 'outcome') : null,
+    outcome: type === 'call' ? (anrufNichtJetzt ? 'wiedervorlage' : str(formData, 'outcome')) : null,
     duration_seconds: type === 'call'
       ? (Number(str(formData, 'duration_seconds') ?? 0) || (minutes > 0 ? Math.round(minutes * 60) : null))
       : null,
@@ -225,7 +231,7 @@ export async function logActivity(formData: FormData) {
     subject: (() => {
       const e = str(formData, 'ergebnis');
       const b = str(formData, 'subject');
-      return e && (type === 'linkedin' || type === 'email') ? [e, b].filter(Boolean).join(' · ') : b;
+      return e && (type === 'linkedin' || type === 'email' || anrufNichtJetzt) ? [e, b].filter(Boolean).join(' · ') : b;
     })(),
     body: str(formData, 'body'),
     occurred_at: (() => {

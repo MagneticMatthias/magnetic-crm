@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Phone, StickyNote, Mail, CalendarDays, Share2 } from 'lucide-react';
 import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
-import { ERGEBNIS_LINKEDIN, ERGEBNIS_EMAIL } from '@/lib/passiert';
+import { ERGEBNIS_LINKEDIN, ERGEBNIS_EMAIL, NICHT_JETZT } from '@/lib/passiert';
 import FollowUpPicker from '@/components/FollowUpPicker';
 import type { ActivityType, CallKind, CallOutcome } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
@@ -30,6 +30,11 @@ export default function ActivityComposer({
     ? 'linkedin' : quelle === 'E-Mail' ? 'email' : 'call';
   const [type, setType] = useState<ActivityType>(start);
   const nachricht = type === 'linkedin' || type === 'email';
+  const startErgebnis = (t: ActivityType) =>
+    t === 'linkedin' ? (quelle === 'LinkedIn Kontaktanfrage' ? 'Kontaktanfrage gesendet' : 'InMail gesendet') : 'E-Mail gesendet';
+  const [nachrichtErgebnis, setNachrichtErgebnis] = useState(startErgebnis(start));
+  const [anrufErgebnis, setAnrufErgebnis] = useState('erreicht');
+  const nichtJetzt = (nachricht && nachrichtErgebnis === NICHT_JETZT) || (type === 'call' && anrufErgebnis === NICHT_JETZT);
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(0);
 
@@ -39,7 +44,7 @@ export default function ActivityComposer({
         {TABS.map(({ type: t, label, icon: Icon }) => (
           <button
             key={t}
-            onClick={() => setType(t)}
+            onClick={() => { setType(t); setNachrichtErgebnis(startErgebnis(t)); }}
             className={`chip ${t === type ? 'bg-brand-soft text-brand' : 'bg-surface-2 text-muted hover:text-ink'}`}
           >
             <Icon size={13} /> {label}
@@ -78,10 +83,12 @@ export default function ActivityComposer({
               </div>
               <div>
                 <label className="label" htmlFor="outcome">Ergebnis</label>
-                <select id="outcome" name="outcome" className="input" defaultValue="erreicht">
+                <select id="outcome" name="outcome" className="input" value={anrufErgebnis}
+                        onChange={(e) => setAnrufErgebnis(e.target.value)}>
                   {(Object.keys(CALL_OUTCOME_LABEL) as CallOutcome[]).map((o) => (
                     <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
                   ))}
+                  <option value={NICHT_JETZT}>{NICHT_JETZT}</option>
                 </select>
               </div>
               <div>
@@ -104,8 +111,8 @@ export default function ActivityComposer({
           <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
             <div>
               <label className="label" htmlFor="ergebnis">Ergebnis</label>
-              <select id="ergebnis" name="ergebnis" className="input" key={type}
-                      defaultValue={type === 'linkedin' ? (quelle === 'LinkedIn Kontaktanfrage' ? 'Kontaktanfrage gesendet' : 'InMail gesendet') : 'E-Mail gesendet'}>
+              <select id="ergebnis" name="ergebnis" className="input" value={nachrichtErgebnis}
+                      onChange={(e) => setNachrichtErgebnis(e.target.value)}>
                 {(type === 'linkedin' ? ERGEBNIS_LINKEDIN : ERGEBNIS_EMAIL).map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
@@ -121,7 +128,8 @@ export default function ActivityComposer({
           </div>
         )}
 
-        <FollowUpPicker />
+        {/* "Antwort: nicht jetzt" braucht eine Wiedervorlage, Vorgabe in 3 Monaten */}
+        <FollowUpPicker key={nichtJetzt ? 'nicht-jetzt' : 'normal'} vorgabeTage={nichtJetzt ? 90 : undefined} pflicht={nichtJetzt} />
 
         <div>
           <label className="label" htmlFor="body">Was ist passiert?</label>

@@ -18,14 +18,25 @@ const dateInput = (d: Date) =>
  * Umweg ueber die Aufgaben-Karte. Gibt `followup_at` (ISO mit Zeitzone,
  * 9 Uhr morgens) und optional `followup_title` ins Formular.
  */
-export default function FollowUpPicker({ vorher }: {
+export default function FollowUpPicker({ vorher, vorgabeTage, pflicht }: {
   /** Bestehende Wiedervorlage beim Bearbeiten einer Aktivitaet */
   vorher?: { taskId: string; due_at: string | null; title: string; priority: number; done: boolean } | null;
+  /** Datum vorbelegen, z. B. 90 Tage bei "Antwort: nicht jetzt" */
+  vorgabeTage?: number;
+  /** Ohne Datum laesst sich das Formular nicht speichern */
+  pflicht?: boolean;
 } = {}) {
   const id = useId();
-  const [iso, setIso] = useState(vorher?.due_at ?? '');
-  const [aktiv, setAktiv] = useState(vorher?.due_at ? 'datum' : '');
-  const [datum, setDatum] = useState(vorher?.due_at ? dateInput(new Date(vorher.due_at)) : '');
+  const vorgabe = (() => {
+    if (vorher?.due_at || !vorgabeTage) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + vorgabeTage);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  })();
+  const [iso, setIso] = useState(vorher?.due_at ?? vorgabe?.toISOString() ?? '');
+  const [aktiv, setAktiv] = useState(vorher?.due_at || vorgabe ? 'datum' : '');
+  const [datum, setDatum] = useState(vorher?.due_at ? dateInput(new Date(vorher.due_at)) : vorgabe ? dateInput(vorgabe) : '');
   const [titel, setTitel] = useState(vorher?.title ?? '');
   // Betreff getippt, aber kein Datum: das Formular wuerde still nichts
   // anlegen und der Text waere weg. Dann ist das Datum Pflicht.
@@ -72,7 +83,7 @@ export default function FollowUpPicker({ vorher }: {
         ))}
         <input type="date" value={datum} onChange={(e) => ausDatum(e.target.value)}
                aria-label="Wiedervorlage an einem bestimmten Tag"
-               required={datumFehlt}
+               required={datumFehlt || pflicht}
                onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Für die Wiedervorlage fehlt das Datum. Oben einen Zeitraum wählen oder hier ein Datum eintragen.')}
                onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')}
                className={`input !w-auto !py-1 text-[13px] ${datumFehlt ? '!border-lose' : ''}`} />
