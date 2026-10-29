@@ -256,11 +256,18 @@ export async function wiedervorlageSetzen(dealId: string, faelligIso: string, be
 }
 
 /** Knopf „Zu Faden machen“: Deal wandert nach Faeden, Betrag (netto) ist Pflicht. */
-export async function dealZuFaden(dealId: string, betragText: string) {
+export async function dealZuFaden(dealId: string, betragText: string, faelligIso: string) {
   const betrag = Number(String(betragText).replace(/\./g, '').replace(',', '.'));
   if (!betrag || betrag <= 0) throw new Error('Bitte einen Betrag angeben, eine Schätzung reicht.');
-  const { supabase, orgId } = await ctx();
+  if (!faelligIso) throw new Error('Bitte ein Datum für die Wiedervorlage angeben.');
+  const { supabase, orgId, profile } = await ctx();
   await zuFaden(supabase, dealId, orgId, betrag);
+  const { data: deal } = await supabase.from('deals').select('contact_id, title').eq('id', dealId).single();
+  await supabase.from('tasks').insert({
+    org_id: orgId, deal_id: dealId, contact_id: deal?.contact_id ?? null,
+    assignee_id: profile.id, created_by: profile.id, priority: 2,
+    title: `Nachfassen: ${deal?.title ?? 'Faden'}`, due_at: faelligIso,
+  });
   refresh();
 }
 

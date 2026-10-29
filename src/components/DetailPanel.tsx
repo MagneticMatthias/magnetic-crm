@@ -44,6 +44,12 @@ const CUSTOM_LABEL: Record<string, string> = {
 
 /* ------------------------- kleine Bausteine ------------------------- */
 
+const inTagen = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 /** Deal fuer diesen Kontakt anlegen: Phase, Quelle und Produkt sind Pflicht. */
 function NeuerDealForm({
   firma, pipelines, stagesFor, onSave, onCancel,
@@ -392,6 +398,7 @@ export default function DetailPanel({
   const [handover, setHandover] = useState<string | null>(null);
   const [neuerDeal, setNeuerDeal] = useState(false);
   const [zuFaden, setZuFaden] = useState<string | null>(null);
+  const [zuFadenDatum, setZuFadenDatum] = useState('');
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => { await fn(); await reload(); });
 
@@ -605,20 +612,29 @@ export default function DetailPanel({
                         {istKaltakquise(data?.pipelines.find((p) => p.id === mainDeal.pipeline_id)?.name) && (
                           <div className="sm:col-span-2">
                             {zuFaden === null ? (
-                              <button type="button" className="btn-ghost !py-1.5 text-[13px]" onClick={() => setZuFaden('')}>
+                              <button type="button" className="btn-ghost !py-1.5 text-[13px]"
+                                      onClick={() => { setZuFaden(''); setZuFadenDatum(inTagen(3)); }}>
                                 Zu Faden machen
                               </button>
                             ) : (
                               <form className="flex flex-wrap items-end gap-2"
                                     onSubmit={(e) => {
                                       e.preventDefault();
-                                      run(async () => { await dealZuFaden(mainDeal.id, zuFaden); setZuFaden(null); });
+                                      run(async () => {
+                                        await dealZuFaden(mainDeal.id, zuFaden, new Date(`${zuFadenDatum}T09:00`).toISOString());
+                                        setZuFaden(null);
+                                      });
                                     }}>
                                 <div>
                                   <label className="label">Betrag netto (€)<span className="text-lose"> *</span></label>
                                   <input className="input !w-40" required autoFocus inputMode="decimal" value={zuFaden}
                                          pattern="[0-9.,]*[1-9][0-9.,]*" placeholder="Schätzung reicht"
                                          onChange={(e) => setZuFaden(e.target.value)} />
+                                </div>
+                                <div>
+                                  <label className="label">Wiedervorlage am<span className="text-lose"> *</span></label>
+                                  <input type="date" className="input !w-40" required value={zuFadenDatum}
+                                         onChange={(e) => setZuFadenDatum(e.target.value)} />
                                 </div>
                                 <button className="btn-primary !py-2 text-[13px]">In Fäden verschieben</button>
                                 <button type="button" className="btn-ghost !py-2 text-[13px]" onClick={() => setZuFaden(null)}>Abbrechen</button>
