@@ -18,12 +18,15 @@ const dateInput = (d: Date) =>
  * Umweg ueber die Aufgaben-Karte. Gibt `followup_at` (ISO mit Zeitzone,
  * 9 Uhr morgens) und optional `followup_title` ins Formular.
  */
-export default function FollowUpPicker() {
+export default function FollowUpPicker({ vorher }: {
+  /** Bestehende Wiedervorlage beim Bearbeiten einer Aktivitaet */
+  vorher?: { taskId: string; due_at: string | null; title: string; priority: number; done: boolean } | null;
+} = {}) {
   const id = useId();
-  const [iso, setIso] = useState('');
-  const [aktiv, setAktiv] = useState('');
-  const [datum, setDatum] = useState('');
-  const [titel, setTitel] = useState('');
+  const [iso, setIso] = useState(vorher?.due_at ?? '');
+  const [aktiv, setAktiv] = useState(vorher?.due_at ? 'datum' : '');
+  const [datum, setDatum] = useState(vorher?.due_at ? dateInput(new Date(vorher.due_at)) : '');
+  const [titel, setTitel] = useState(vorher?.title ?? '');
   // Betreff getippt, aber kein Datum: das Formular wuerde still nichts
   // anlegen und der Text waere weg. Dann ist das Datum Pflicht.
   const datumFehlt = titel.trim().length > 0 && !iso;
@@ -50,8 +53,10 @@ export default function FollowUpPicker() {
   return (
     <div>
       <input type="hidden" name="followup_at" value={iso} />
+      {vorher && <input type="hidden" name="followup_task_id" value={vorher.taskId} />}
       <p className="label flex items-center gap-1.5">
         <CalendarClock size={13} /> Wiedervorlage
+        {vorher && <span className="font-normal text-muted">· {vorher.done ? 'erledigt' : 'offen'}</span>}
       </p>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -91,7 +96,7 @@ export default function FollowUpPicker() {
         </div>
         <div>
           <label className="label" htmlFor={`fu-prio-${id}`}>Priorität</label>
-          <select id={`fu-prio-${id}`} name="followup_priority" className="input text-[13px]" defaultValue="2">
+          <select id={`fu-prio-${id}`} name="followup_priority" className="input text-[13px]" defaultValue={String(vorher?.priority ?? 2)}>
             <option value="1">Hoch</option>
             <option value="2">Mittel</option>
             <option value="3">Niedrig</option>

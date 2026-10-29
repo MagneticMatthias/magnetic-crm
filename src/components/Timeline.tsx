@@ -5,12 +5,13 @@ import {
   Phone, StickyNote, Mail, CalendarDays, MessageCircle, CheckSquare, Share2, Trash2, X,
 } from 'lucide-react';
 import { ACTIVITY_TYPE_LABEL, CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
-import { dateTime, duration } from '@/lib/format';
+import { dateOnly, dateTime, duration } from '@/lib/format';
 import { Badge } from '@/components/Badge';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { istHtml, ohneZitat } from '@/lib/mailtext';
 import { updateActivity, deleteActivity } from '@/app/actions/crm';
 import FollowUpPicker from '@/components/FollowUpPicker';
+import { PRIO_LABEL, type Wiedervorlage } from '@/lib/wiedervorlage';
 import type { Activity, ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
 
 const ICON: Record<ActivityType, typeof Phone> = {
@@ -39,7 +40,7 @@ const teileDatum = (iso: string) => {
   };
 };
 
-function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () => void }) {
+function EditForm({ a, stages, wv, onDone }: { a: Row; stages?: Stage[]; wv?: Wiedervorlage; onDone: () => void }) {
   const editor = useRef<HTMLDivElement>(null);
   const { datum, zeit } = teileDatum(a.occurred_at);
   const html = istHtml(a.body ?? '');
@@ -147,7 +148,7 @@ function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () 
         </div>
       )}
 
-      <FollowUpPicker />
+      <FollowUpPicker vorher={wv ?? null} />
 
       <div className="flex flex-wrap items-center gap-2">
         <button className="btn-primary !py-2 text-[13px]">Speichern</button>
@@ -160,8 +161,11 @@ function EditForm({ a, stages, onDone }: { a: Row; stages?: Stage[]; onDone: () 
 }
 
 export default function Timeline({
-  activities, editable, stages, onChanged,
-}: { activities: Row[]; editable?: boolean; stages?: Stage[]; onChanged?: () => void }) {
+  activities, editable, stages, onChanged, wiedervorlagen,
+}: {
+  activities: Row[]; editable?: boolean; stages?: Stage[]; onChanged?: () => void;
+  wiedervorlagen?: Record<string, Wiedervorlage>;
+}) {
   const [editId, setEditId] = useState<string | null>(null);
 
   if (!activities.length) {
@@ -179,7 +183,8 @@ export default function Timeline({
         if (editable && editId === a.id) {
           return (
             <li key={a.id} className="card p-3.5">
-              <EditForm a={a} stages={stages} onDone={() => { setEditId(null); onChanged?.(); }} />
+              <EditForm a={a} stages={stages} wv={wiedervorlagen?.[a.id]}
+                        onDone={() => { setEditId(null); onChanged?.(); }} />
             </li>
           );
         }
@@ -190,7 +195,7 @@ export default function Timeline({
               <Icon size={15} />
             </span>
 
-            <Inhalt a={a} tone={tone} editable={editable} onEdit={() => setEditId(a.id)} />
+            <Inhalt a={a} tone={tone} editable={editable} onEdit={() => setEditId(a.id)} wv={wiedervorlagen?.[a.id]} />
 
             {editable && (
               <form action={async (fd) => { await deleteActivity(fd); onChanged?.(); }}>
@@ -209,8 +214,8 @@ export default function Timeline({
 }
 
 function Inhalt({
-  a, tone, editable, onEdit,
-}: { a: Row; tone: string; editable?: boolean; onEdit: () => void }) {
+  a, tone, editable, onEdit, wv,
+}: { a: Row; tone: string; editable?: boolean; onEdit: () => void; wv?: Wiedervorlage }) {
   const inhalt = (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -233,6 +238,13 @@ function Inhalt({
       {a.comment && (
         <p className="mt-2 rounded-md border-l-2 border-brand bg-brand-soft/40 px-2.5 py-1.5 text-sm whitespace-pre-wrap">
           {a.comment}
+        </p>
+      )}
+      {wv && (
+        <p className={`mt-2 flex flex-wrap items-center gap-1.5 text-xs ${wv.done ? 'text-muted' : 'text-ink'}`}>
+          <span className="font-medium">Wiedervorlage:</span>
+          <span>{[wv.due_at ? dateOnly(wv.due_at) : 'ohne Datum', wv.title, PRIO_LABEL[wv.priority] || 'Mittel'].join(' · ')}</span>
+          <Badge tone={wv.done ? 'win' : 'warn'}>{wv.done ? 'erledigt' : 'offen'}</Badge>
         </p>
       )}
       {a.user && <p className="mt-1.5 text-xs text-muted">{a.user.full_name || a.user.email}</p>}

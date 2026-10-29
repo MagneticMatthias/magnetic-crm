@@ -43,6 +43,18 @@ export default async function PipelinesPage({
 
   let rows = (deals ?? []) as DealWithContact[];
 
+  // Faeden: offene Deals ohne offene Wiedervorlage rot markieren
+  if (/^f(ä|ae)den$/i.test(pipeline.name.trim())) {
+    const { data: offen } = await supabase.from('tasks').select('deal_id, contact_id')
+      .eq('org_id', orgId).eq('done', false).not('due_at', 'is', null).limit(5000);
+    const mitDatumDeal = new Set((offen ?? []).map((t) => t.deal_id).filter(Boolean));
+    const mitDatumKontakt = new Set((offen ?? []).filter((t) => !t.deal_id).map((t) => t.contact_id));
+    rows = rows.map((d) => ({
+      ...d,
+      ohne_datum: d.status === 'offen' && !mitDatumDeal.has(d.id) && !mitDatumKontakt.has(d.contact_id),
+    }));
+  }
+
   if (q?.trim()) {
     const term = q.trim().toLowerCase();
     rows = rows.filter((d) => {

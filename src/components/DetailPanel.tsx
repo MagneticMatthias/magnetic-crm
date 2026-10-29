@@ -587,6 +587,17 @@ export default function DetailPanel({
                         <SelectField label="Deal-Phase" required value={mainDeal.stage_id}
                           options={stagesFor(mainDeal.pipeline_id).map((s) => ({ value: s.id, label: s.name }))}
                           onSave={(stageId) => run(() => setDealStage(mainDeal.id, stageId))} />
+                        <div className="sm:col-span-2">
+                          <span className="label">Nächste Wiedervorlage</span>
+                          {(() => {
+                            const naechste = (data?.tasks ?? [])
+                              .filter((t) => !t.done && t.due_at && (!t.deal_id || t.deal_id === mainDeal.id))
+                              .sort((x, y) => String(x.due_at).localeCompare(String(y.due_at)))[0];
+                            return naechste
+                              ? <p className="text-sm"><b>{dateOnly(naechste.due_at!)}</b> · {naechste.title}</p>
+                              : <p className="text-sm text-lose">keine offene Wiedervorlage</p>;
+                          })()}
+                        </div>
                         <SelectField label="Quelle" value={mainDeal.custom?.quelle} placeholder="–"
                           options={QUELLEN.map((q) => ({ value: q, label: q }))}
                           onSave={(v) => run(() => updateDealCustom(mainDeal.id, 'quelle', v))} />
@@ -770,7 +781,7 @@ export default function DetailPanel({
                 stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
                 phone={primary?.phone}
               />
-              <Timeline activities={data?.activities ?? []} editable onChanged={reload}
+              <Timeline activities={data?.activities ?? []} editable onChanged={reload} wiedervorlagen={data?.wiedervorlagen}
                         stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined} />
             </>
           ) : (

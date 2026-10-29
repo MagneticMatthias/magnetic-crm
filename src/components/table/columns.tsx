@@ -378,7 +378,12 @@ export const CONTACT_DEFAULT_COLUMNS = [
 /* -------------------------------- Deals ------------------------------- */
 
 export const DEAL_COLUMNS: ColumnDef<DealWithContact>[] = [
-  { key: 'company', label: 'Firmenname', width: 260, render: (r) => <Firma name={r.contact?.company} />, sortValue: (r) => r.contact?.company ?? '' },
+  { key: 'company', label: 'Firmenname', width: 260, render: (r) => (
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0"><Firma name={r.contact?.company} /></span>
+        {r.ohne_datum && <span className="chip shrink-0 bg-lose/10 text-lose" title="Keine offene Wiedervorlage">ohne Datum</span>}
+      </span>
+    ), sortValue: (r) => r.contact?.company ?? '' },
   { key: 'custom.prio', label: 'Prio', width: 70, render: (r) => <Muted>{r.contact?.custom?.prio}</Muted>, sortValue: (r) => prioNum(r.contact?.custom?.prio) },
   { key: 'stage', label: 'Phase', width: 190, render: (r) => <StageCell dealId={r.id} stageId={r.stage_id} stage={r.stage} pipelineId={r.pipeline_id} />, sortValue: (r) => r.stage?.name ?? '' },
   { key: 'last_contacted_at', label: 'Zuletzt kontaktiert', width: 160, render: (r) => <LastContact value={r.contact?.last_contacted_at} />, sortValue: (r) => r.contact?.last_contacted_at ?? '' },

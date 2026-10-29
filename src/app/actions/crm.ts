@@ -169,6 +169,8 @@ export async function phaseNachziehen(supabase: Db, dealId: string, namen: strin
 async function createFollowUp(
   supabase: Db, orgId: string, profileId: string,
   formData: FormData, contactId: string | null, dealId: string | null,
+  /** Anlegezeit der Aktivitaet: verknuepft Aktivitaet und Wiedervorlage */
+  createdAt?: string,
 ) {
   const at = str(formData, 'followup_at');
   if (!at) return;
@@ -188,6 +190,7 @@ async function createFollowUp(
     org_id: orgId, contact_id: contactId, deal_id: dealId,
     assignee_id: profileId, created_by: profileId,
     title: titel, due_at: at, priority: [1, 2, 3].includes(prio) ? prio : 2,
+    ...(createdAt ? { created_at: createdAt } : {}),
   });
 }
 
@@ -198,7 +201,7 @@ export async function logActivity(formData: FormData) {
   const contactId = str(formData, 'contact_id');
   const dealId = str(formData, 'deal_id');
 
-  const { error } = await supabase.from('activities').insert({
+  const { data: neu, error } = await supabase.from('activities').insert({
     org_id: orgId,
     deal_id: dealId,
     contact_id: contactId,
@@ -218,10 +221,10 @@ export async function logActivity(formData: FormData) {
       if (d) return new Date(`${d}T${t ?? '12:00'}`).toISOString();
       return str(formData, 'occurred_at') ?? new Date().toISOString();
     })(),
-  });
+  }).select('created_at').single();
   if (error) throw new Error(error.message);
 
-  await createFollowUp(supabase, orgId, profile.id, formData, contactId, dealId);
+  await createFollowUp(supabase, orgId, profile.id, formData, contactId, dealId, neu?.created_at);
 
   // Eine ausdrueckliche Wahl im Formular gewinnt immer. Fehlt sie, zieht
   // die Phase der Aktivitaet nach: wer angeschrieben wurde, steht nicht
@@ -268,11 +271,20 @@ export async function updateActivity(formData: FormData) {
 
   // Kontakt und Deal stehen nicht im Formular, sie kommen aus der Aktivitaet.
   const { data: a } = await supabase
-    .from('activities').select('contact_id, deal_id').eq('id', String(formData.get('id'))).single();
+    .from('activities').select('contact_id, deal_id, created_at').eq('id', String(formData.get('id'))).single();
 
-  // Auch beim Nachtragen laesst sich eine Wiedervorlage setzen ...
-  if (str(formData, 'followup_at')) {
-    await createFollowUp(supabase, orgId, profile.id, formData, a?.contact_id ?? null, a?.deal_id ?? null);
+  // Bestehende Wiedervorlage aktualisieren, sonst neu anlegen
+  const taskId = str(formData, 'followup_task_id');
+  if (taskId && str(formData, 'followup_at')) {
+    const prio = Number(str(formData, 'followup_priority') ?? 2);
+    const { error: tErr } = await supabase.from('tasks').update({
+      due_at: str(formData, 'followup_at'),
+      ...(str(formData, 'followup_title') ? { title: str(formData, 'followup_title') } : {}),
+      priority: [1, 2, 3].includes(prio) ? prio : 2,
+    }).eq('id', taskId);
+    if (tErr) throw new Error(tErr.message);
+  } else if (str(formData, 'followup_at')) {
+    await createFollowUp(supabase, orgId, profile.id, formData, a?.contact_id ?? null, a?.deal_id ?? null, a?.created_at);
   }
   // ... und der Deal verschieben, z. B. eine importierte Absage auf Verloren.
   const nextStage = str(formData, 'next_stage_id');

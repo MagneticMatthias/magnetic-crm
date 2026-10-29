@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { wiedervorlagenZuordnen, type Wiedervorlage } from '@/lib/wiedervorlage';
 import { ctx, str } from '@/lib/ctx';
 import { smtpConfigured } from '@/lib/mailer';
 import type {
@@ -25,6 +26,8 @@ export type ContactDetail = {
   activities: (Activity & { user: { full_name: string | null; email: string | null } | null })[];
   notes: NoteWithUser[];
   tasks: Task[];
+  /** Wiedervorlage je Aktivitaet (Aktivitaets-ID -> Aufgabe) */
+  wiedervorlagen: Record<string, Wiedervorlage>;
   templates: EmailTemplate[];
   smtpReady: boolean;
   team: { id: string; full_name: string | null; email: string | null }[];
@@ -54,7 +57,7 @@ export async function loadContactDetail(contactId: string, dealId?: string | nul
       supabase.from('notes').select('*, user:profiles(full_name, email)')
         .eq('contact_id', contactId).order('pinned', { ascending: false })
         .order('created_at', { ascending: false }),
-      supabase.from('tasks').select('*').eq('contact_id', contactId).order('done').order('due_at').limit(30),
+      supabase.from('tasks').select('*').eq('contact_id', contactId).order('done').order('due_at').limit(300),
       supabase.from('email_templates').select('*').eq('org_id', orgId).order('name'),
       supabase.from('profiles').select('id, full_name, email').eq('org_id', orgId).eq('active', true),
       supabase.from('column_layouts').select('columns').eq('view_key', 'deal_panel').maybeSingle(),
@@ -86,7 +89,11 @@ export async function loadContactDetail(contactId: string, dealId?: string | nul
     stages: (stages ?? []) as Stage[],
     activities: (activities ?? []) as ContactDetail['activities'],
     notes: noteList,
-    tasks: (tasks ?? []) as Task[],
+    tasks: ((tasks ?? []) as Task[]).slice(0, 30),
+    wiedervorlagen: wiedervorlagenZuordnen(
+      (activities ?? []) as { id: string; contact_id: string | null; deal_id: string | null; created_at: string }[],
+      (tasks ?? []) as unknown as Parameters<typeof wiedervorlagenZuordnen>[1],
+    ),
     templates: (templates ?? []) as EmailTemplate[],
     smtpReady: smtpConfigured(),
     team: (team ?? []) as ContactDetail['team'],
