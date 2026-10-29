@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { Phone, StickyNote, Mail, CalendarDays, Share2 } from 'lucide-react';
-import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL, NACHRICHT_ERGEBNIS } from '@/lib/labels';
+import { CALL_KIND_LABEL, CALL_OUTCOME_LABEL } from '@/lib/labels';
+import { ERGEBNIS_LINKEDIN, ERGEBNIS_EMAIL } from '@/lib/passiert';
 import FollowUpPicker from '@/components/FollowUpPicker';
-import type { ActivityType, CallKind, CallOutcome, Stage } from '@/lib/types';
+import type { ActivityType, CallKind, CallOutcome } from '@/lib/types';
 import { dialHref } from '@/lib/dial';
 
 const TABS: { type: ActivityType; label: string; icon: typeof Phone }[] = [
@@ -16,12 +17,11 @@ const TABS: { type: ActivityType; label: string; icon: typeof Phone }[] = [
 ];
 
 export default function ActivityComposer({
-  action, dealId, contactId, stages, phone, quelle,
+  action, dealId, contactId, phone, quelle,
 }: {
   action: (fd: FormData) => Promise<void>;
   dealId?: string;
   contactId?: string;
-  stages?: Stage[];
   phone?: string | null;
   /** Quelle des Deals bestimmt den voreingestellten Reiter */
   quelle?: string | null;
@@ -104,8 +104,9 @@ export default function ActivityComposer({
           <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
             <div>
               <label className="label" htmlFor="ergebnis">Ergebnis</label>
-              <select id="ergebnis" name="ergebnis" className="input" defaultValue="Nachricht gesendet">
-                {NACHRICHT_ERGEBNIS.map((e) => <option key={e} value={e}>{e}</option>)}
+              <select id="ergebnis" name="ergebnis" className="input" key={type}
+                      defaultValue={type === 'linkedin' ? (quelle === 'LinkedIn Kontaktanfrage' ? 'Kontaktanfrage gesendet' : 'InMail gesendet') : 'E-Mail gesendet'}>
+                {(type === 'linkedin' ? ERGEBNIS_LINKEDIN : ERGEBNIS_EMAIL).map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div>
@@ -117,21 +118,6 @@ export default function ActivityComposer({
           <div>
             <label className="label" htmlFor="subject">Betreff</label>
             <input id="subject" name="subject" className="input" placeholder="Kurzer Betreff" />
-          </div>
-        )}
-
-        {/* Fuer alle Typen, nicht nur Anrufe: eine Absage per Mail oder ein
-            LinkedIn-Kontakt muss den Deal genauso bewegen koennen. Bei Anruf
-            und LinkedIn zieht die Automatik nach, sonst bleibt die Phase. */}
-        {stages && stages.length > 0 && (
-          <div>
-            <label className="label" htmlFor="next_stage_id">Deal danach verschieben nach</label>
-            <select id="next_stage_id" name="next_stage_id" className="input" defaultValue="">
-              <option value="">
-                {type === 'call' || nachricht ? '– automatisch aus dem Ergebnis –' : '– Phase unverändert –'}
-              </option>
-              {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
           </div>
         )}
 

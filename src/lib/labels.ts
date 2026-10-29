@@ -74,7 +74,3 @@ export const DIAL_CODES = [
   { code: '+41', flag: '🇨🇭', label: 'Schweiz' },
 ];
 
-/** Ergebnis bei LinkedIn und E-Mail (steht vorne im Betreff der Aktivitaet). */
-export const NACHRICHT_ERGEBNIS = [
-  'Nachricht gesendet', 'Antwort positiv', 'Antwort negativ', 'Keine Antwort', 'Termin vereinbart',
-] as const;

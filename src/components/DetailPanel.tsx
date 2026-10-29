@@ -817,7 +817,6 @@ export default function DetailPanel({
                 action={async (fd) => { await logActivity(fd); await reload(); }}
                 contactId={contactId}
                 dealId={mainDeal?.id}
-                stages={mainDeal ? stagesFor(mainDeal.pipeline_id) : undefined}
                 phone={primary?.phone}
                 quelle={mainDeal?.custom?.quelle ?? null}
                 key={mainDeal?.id ?? 'ohne'}
